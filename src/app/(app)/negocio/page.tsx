@@ -31,6 +31,16 @@ type User = {
   is_active: boolean;
 };
 
+const DAYS = [
+  { key: "monday", label: "Lunes" },
+  { key: "tuesday", label: "Martes" },
+  { key: "wednesday", label: "Miercoles" },
+  { key: "thursday", label: "Jueves" },
+  { key: "friday", label: "Viernes" },
+  { key: "saturday", label: "Sabado" },
+  { key: "sunday", label: "Domingo" },
+];
+
 export default function NegocioPage() {
   const [client, setClient] = useState<Client | null>(null);
   const [users, setUsers] = useState<User[]>([]);
@@ -40,19 +50,8 @@ export default function NegocioPage() {
   const [bizSaved, setBizSaved] = useState(false);
   const [formBiz, setFormBiz] = useState({
     slogan: "", logo_url: "", address: "", phone: "", email: "",
-    city: "", instagram_url: "", facebook_url: "",
-    tiktok_url: "", web_url: "",
+    city: "", instagram_url: "", facebook_url: "", tiktok_url: "", web_url: "",
   });
-
-  const DAYS = [
-    { key: "monday", label: "Lunes" },
-    { key: "tuesday", label: "Martes" },
-    { key: "wednesday", label: "Miércoles" },
-    { key: "thursday", label: "Jueves" },
-    { key: "friday", label: "Viernes" },
-    { key: "saturday", label: "Sábado" },
-    { key: "sunday", label: "Domingo" },
-  ];
   const [businessHours, setBusinessHours] = useState<Record<string, string | null>>({
     monday: "09:00-18:00", tuesday: "09:00-18:00", wednesday: "09:00-18:00",
     thursday: "09:00-18:00", friday: "09:00-18:00", saturday: "09:00-13:00", sunday: null,
@@ -84,7 +83,7 @@ export default function NegocioPage() {
           web_url: c.web_url || "",
         });
         if (c.business_hours) {
-          setBusinessHours(typeof c.business_hours === 'string' ? JSON.parse(c.business_hours) : c.business_hours);
+          setBusinessHours(typeof c.business_hours === "string" ? JSON.parse(c.business_hours) : c.business_hours);
         }
       })
       .catch(console.error)
@@ -122,7 +121,7 @@ export default function NegocioPage() {
       if (editingUser) {
         await putJson(`/users/${editingUser.id}`, formUser);
       } else {
-        if (!formUser.username || !formUser.password) return alert("Usuario y contraseña requeridos");
+        if (!formUser.username || !formUser.password) return alert("Usuario y contrasenia requeridos");
         await postJson("/users", formUser);
       }
       setShowUserForm(false);
@@ -131,7 +130,7 @@ export default function NegocioPage() {
   }
 
   async function handleDeleteUser(id: number) {
-    if (!confirm("¿Eliminar este usuario?")) return;
+    if (!confirm("Eliminar este usuario?")) return;
     try { await deleteJson(`/users/${id}`); loadData(); } catch (e) { console.error(e); }
   }
 
@@ -141,9 +140,9 @@ export default function NegocioPage() {
 
   return (
     <div style={{ maxWidth: "680px" }}>
-      <PageTitle>🏪 Mi Negocio</PageTitle>
+      <PageTitle>Mi Negocio</PageTitle>
 
-      {/* ── Resumen ── */}
+      {/* Resumen placeholder */}
       <div style={{
         background: "linear-gradient(135deg, #6c63ff15, #1a1a2e08)",
         border: "1px solid #6c63ff30",
@@ -154,11 +153,11 @@ export default function NegocioPage() {
         color: "#666",
         lineHeight: "1.6",
       }}>
-        <strong style={{ color: "#6c63ff" }}>📋 Resumen</strong><br />
-        Aquí verás un resumen de todo lo que podés configurar en tu negocio.
+        <strong style={{ color: "#6c63ff" }}>Resumen</strong><br />
+        Aqui veras un resumen de todo lo que podes configurar en tu negocio.
       </div>
 
-      {/* ── Visual Card ── */}
+      {/* Visual Card - solo muestra datos */}
       <Card style={{ marginBottom: "20px", overflow: "hidden" }}>
         <div style={{
           margin: "-20px -20px 0",
@@ -171,7 +170,7 @@ export default function NegocioPage() {
               <img src={formBiz.logo_url} alt="logo" style={{ width: "56px", height: "56px", borderRadius: "12px", objectFit: "cover", border: "2px solid rgba(255,255,255,0.3)" }}
                 onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
             ) : (
-              <div style={{ width: "56px", height: "56px", borderRadius: "12px", background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px" }}>🏪</div>
+              <div style={{ width: "56px", height: "56px", borderRadius: "12px", background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px" }}>T</div>
             )}
             <div>
               <div style={{ fontSize: "20px", fontWeight: 700 }}>{client?.name}</div>
@@ -184,119 +183,90 @@ export default function NegocioPage() {
           </div>
         </div>
         <div style={{ marginTop: "16px", display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", color: "#888" }}>
-          🌐 {client?.subdomain}.vib3ia.com
-        </div>
-        <div style={{ marginTop: "12px" }}>
-          {!editingBiz ? (
-            <IconButton variant="ghost" title="Editar negocio" onClick={() => setEditingBiz(true)}>✏️</IconButton>
-          ) : (
-            <div style={{ display: "flex", gap: "8px" }}>
-              <Button onClick={handleSaveBiz} disabled={savingBiz} style={{ fontSize: "12px", padding: "6px 14px" }}>
-                {savingBiz ? "..." : "✓"}
-              </Button>
-              <Button variant="secondary" onClick={() => setEditingBiz(false)} style={{ fontSize: "12px", padding: "6px 14px" }}>✕</Button>
-            </div>
-          )}
+          {client?.subdomain}.vib3ia.com
         </div>
       </Card>
 
-      {/* ── Datos Comerciales ── */}
+      {/* Datos Comerciales */}
       <Card style={{ marginBottom: "20px" }}>
         <CardHeader
-          title="📝 Datos comerciales"
-          action={
-            !editingBiz ? (
-              <IconButton variant="ghost" title="Editar" onClick={() => setEditingBiz(true)}>✏️</IconButton>
-            ) : undefined
-          }
+          title="Datos comerciales"
+          action={!editingBiz && <IconButton variant="ghost" title="Editar" onClick={() => setEditingBiz(true)}>E</IconButton>}
         />
         {editingBiz ? (
           <div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-              <Input label="Slogan" value={formBiz.slogan} onChange={(v) => setFormBiz({ ...formBiz, slogan: v })} placeholder="Tu eslogan" />
-              <Input label="Logo (URL)" value={formBiz.logo_url} onChange={(v) => setFormBiz({ ...formBiz, logo_url: v })} placeholder="https://..." />
-              <Input label="Dirección" value={formBiz.address} onChange={(v) => setFormBiz({ ...formBiz, address: v })} placeholder="Av. Libertador 1234" />
-              <Input label="Ciudad" value={formBiz.city} onChange={(v) => setFormBiz({ ...formBiz, city: v })} placeholder="San Juan" />
-              <Input label="Teléfono" value={formBiz.phone} onChange={(v) => setFormBiz({ ...formBiz, phone: v })} placeholder="+54 264 1234567" />
-              <Input label="Email" value={formBiz.email} onChange={(v) => setFormBiz({ ...formBiz, email: v })} placeholder="info@minegocio.com" />
-              <div>
-                <label style={{ fontSize: "13px", fontWeight: 600, display: "block", marginBottom: "8px", color: "#555" }}>🕐 Horario de atención</label>
-                {DAYS.map((day) => (
-                  <div key={day.key} style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
-                    <span style={{ width: "100px", fontSize: "13px", color: "#666" }}>{day.label}</span>
-                    {businessHours[day.key] ? (
-                      <div style={{ flex: 1, display: "flex", alignItems: "center", gap: "6px" }}>
-                        <input
-                          value={businessHours[day.key] || ""}
-                          onChange={(e) => setBusinessHours({ ...businessHours, [day.key]: e.target.value })}
-                          style={{ flex: 1, padding: "6px 10px", border: "1px solid #ddd", borderRadius: "8px", fontSize: "13px" }}
-                          placeholder="09:00-18:00"
-                        />
-                        <button
-                          onClick={() => setBusinessHours({ ...businessHours, [day.key]: null })}
-                          style={{ background: "none", border: "none", cursor: "pointer", color: "#e74c3c", fontSize: "14px" }}
-                          title="Cerrado"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => setBusinessHours({ ...businessHours, [day.key]: "09:00-18:00" })}
-                        style={{ background: "#27ae60", color: "#fff", border: "none", borderRadius: "6px", padding: "4px 10px", fontSize: "12px", cursor: "pointer" }}
-                      >
-                        + Abrir
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
+              <Input label="Slogan" value={formBiz.slogan} onChange={(v) => setFormBiz({ ...formBiz, slogan: v })} />
+              <Input label="Logo (URL)" value={formBiz.logo_url} onChange={(v) => setFormBiz({ ...formBiz, logo_url: v })} />
+              <Input label="Direccion" value={formBiz.address} onChange={(v) => setFormBiz({ ...formBiz, address: v })} />
+              <Input label="Ciudad" value={formBiz.city} onChange={(v) => setFormBiz({ ...formBiz, city: v })} />
+              <Input label="Telefono" value={formBiz.phone} onChange={(v) => setFormBiz({ ...formBiz, phone: v })} />
+              <Input label="Email" value={formBiz.email} onChange={(v) => setFormBiz({ ...formBiz, email: v })} />
             </div>
-            <div style={{ marginTop: "8px", borderTop: "1px solid #f0", paddingTop: "12px" }}>
-              <div style={{ fontSize: "12px", fontWeight: 600, color: "#888", marginBottom: "8px" }}>🌐 Redes y web</div>
+
+            {/* Horarios por dia */}
+            <div style={{ marginTop: "16px", paddingTop: "16px", borderTop: "1px solid #f0" }}>
+              <div style={{ fontSize: "12px", fontWeight: 600, color: "#888", marginBottom: "10px" }}>Horarios de atencion</div>
+              {DAYS.map((day) => (
+                <div key={day.key} style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
+                  <span style={{ width: "90px", fontSize: "13px", color: "#666" }}>{day.label}</span>
+                  {businessHours[day.key] ? (
+                    <div style={{ flex: 1, display: "flex", alignItems: "center", gap: "6px" }}>
+                      <input
+                        value={businessHours[day.key] || ""}
+                        onChange={(e) => setBusinessHours({ ...businessHours, [day.key]: e.target.value })}
+                        style={{ flex: 1, padding: "6px 10px", border: "1px solid #ddd", borderRadius: "8px", fontSize: "13px" }}
+                      />
+                      <button onClick={() => setBusinessHours({ ...businessHours, [day.key]: null })} style={{ background: "none", border: "none", cursor: "pointer", color: "#e74c3c", fontSize: "14px" }}>x</button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setBusinessHours({ ...businessHours, [day.key]: "09:00-18:00" })} style={{ background: "#27ae60", color: "#fff", border: "none", borderRadius: "6px", padding: "4px 10px", fontSize: "12px", cursor: "pointer" }}>+ Abrir</button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Redes */}
+            <div style={{ marginTop: "16px", paddingTop: "16px", borderTop: "1px solid #f0" }}>
+              <div style={{ fontSize: "12px", fontWeight: 600, color: "#888", marginBottom: "10px" }}>Redes y web</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                <Input label="Web" value={formBiz.web_url} onChange={(v) => setFormBiz({ ...formBiz, web_url: v })} placeholder="https://..." />
-                <Input label="Instagram" value={formBiz.instagram_url} onChange={(v) => setFormBiz({ ...formBiz, instagram_url: v })} placeholder="@tuinstagram" />
-                <Input label="Facebook" value={formBiz.facebook_url} onChange={(v) => setFormBiz({ ...formBiz, facebook_url: v })} placeholder="@tufacebook" />
-                <Input label="TikTok" value={formBiz.tiktok_url} onChange={(v) => setFormBiz({ ...formBiz, tiktok_url: v })} placeholder="@tutiktok" />
+                <Input label="Web" value={formBiz.web_url} onChange={(v) => setFormBiz({ ...formBiz, web_url: v })} />
+                <Input label="Instagram" value={formBiz.instagram_url} onChange={(v) => setFormBiz({ ...formBiz, instagram_url: v })} />
+                <Input label="Facebook" value={formBiz.facebook_url} onChange={(v) => setFormBiz({ ...formBiz, facebook_url: v })} />
+                <Input label="TikTok" value={formBiz.tiktok_url} onChange={(v) => setFormBiz({ ...formBiz, tiktok_url: v })} />
               </div>
             </div>
-            {bizSaved && <div style={{ color: "#27ae60", fontSize: "13px", fontWeight: 600, marginTop: "8px" }}>✓ Cambios guardados</div>}
+
+            <div style={{ display: "flex", gap: "8px", marginTop: "16px", paddingTop: "16px", borderTop: "1px solid #f0" }}>
+              <Button onClick={handleSaveBiz} disabled={savingBiz}>
+                {savingBiz ? "Guardando..." : "Guardar cambios"}
+              </Button>
+              <Button variant="secondary" onClick={() => setEditingBiz(false)}>Cancelar</Button>
+            </div>
+            {bizSaved && <div style={{ color: "#27ae60", fontSize: "13px", fontWeight: 600, marginTop: "8px" }}>Cambios guardados</div>}
           </div>
         ) : (
           <div style={{ fontSize: "13px", color: "#666", lineHeight: "1.8" }}>
-            {formBiz.address && <div>📍 {formBiz.address}{formBiz.city ? `, ${formBiz.city}` : ""}</div>}
-            {formBiz.phone && <div>📞 {formBiz.phone}</div>}
-            {formBiz.email && <div>✉️ {formBiz.email}</div>}
-            {client && client.business_hours && (
+            {formBiz.address && <div>{formBiz.address}{formBiz.city ? `, ${formBiz.city}` : ""}</div>}
+            {formBiz.phone && <div>{formBiz.phone}</div>}
+            {formBiz.email && <div>{formBiz.email}</div>}
+            {client?.business_hours && (
               <div style={{ marginTop: "8px" }}>
                 {DAYS.map((day) => (
-                  <div key={day.key} style={{ fontSize: "13px", marginBottom: "2px" }}>
-                    <span style={{ color: "#888" }}>{day.label}: </span>
-                    {client.business_hours[day.key]
-                      ? <span>🕐 {client.business_hours[day.key]}</span>
-                      : <span style={{ color: "#ccc" }}>cerrado</span>
-                    }
+                  <div key={day.key}>
+                    {day.label}: {client.business_hours[day.key] || "cerrado"}
                   </div>
                 ))}
-              </div>
-            )}
-            {(formBiz.web_url || formBiz.instagram_url || formBiz.facebook_url || formBiz.tiktok_url) && (
-              <div style={{ marginTop: "8px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                {formBiz.web_url && <span>🌐</span>}
-                {formBiz.instagram_url && <span>📸</span>}
-                {formBiz.facebook_url && <span>📘</span>}
-                {formBiz.tiktok_url && <span>🎵</span>}
               </div>
             )}
           </div>
         )}
       </Card>
 
-      {/* ── Mi Equipo ── */}
+      {/* Mi Equipo */}
       <Card>
         <CardHeader
-          title="👥 Mi equipo"
+          title="Mi equipo"
           action={<IconButton variant="primary" title="Agregar usuario" onClick={openNewUser}>+</IconButton>}
         />
         {users.length === 0 ? (
@@ -316,8 +286,8 @@ export default function NegocioPage() {
                   {u.rol}
                 </div>
                 <div style={{ display: "flex", gap: "4px" }}>
-                  <IconButton variant="ghost" title="Editar" onClick={() => openEditUser(u)}>✏️</IconButton>
-                  <IconButton variant="danger" title="Eliminar" onClick={() => handleDeleteUser(u.id)}>🗑️</IconButton>
+                  <IconButton variant="ghost" title="Editar" onClick={() => openEditUser(u)}>E</IconButton>
+                  <IconButton variant="danger" title="Eliminar" onClick={() => handleDeleteUser(u.id)}>X</IconButton>
                 </div>
               </div>
             ))}
@@ -325,18 +295,18 @@ export default function NegocioPage() {
         )}
       </Card>
 
-      {/* ── User Form Modal ── */}
+      {/* User Form Modal */}
       {showUserForm && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }} onClick={(e) => { if (e.target === e.currentTarget) setShowUserForm(false); }}>
           <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "420px" }}>
             <h3 style={{ fontSize: "17px", fontWeight: 700, marginBottom: "20px" }}>
-              {editingUser ? "✏️" : "+"} Usuario
+              {editingUser ? "Editar usuario" : "Nuevo usuario"}
             </h3>
             <Input label="Nombre" value={formUser.name} onChange={(v) => setFormUser({ ...formUser, name: v })} />
             <Input label="Usuario" value={formUser.username} onChange={(v) => setFormUser({ ...formUser, username: v })} disabled={!!editingUser} />
-            {!editingUser && <Input label="Contraseña" value={formUser.password} onChange={(v) => setFormUser({ ...formUser, password: v })} type="password" />}
+            {!editingUser && <Input label="Contrasenia" value={formUser.password} onChange={(v) => setFormUser({ ...formUser, password: v })} type="password" />}
             <Input label="Email" value={formUser.email} onChange={(v) => setFormUser({ ...formUser, email: v })} />
-            <Input label="Teléfono" value={formUser.phone} onChange={(v) => setFormUser({ ...formUser, phone: v })} />
+            <Input label="Telefono" value={formUser.phone} onChange={(v) => setFormUser({ ...formUser, phone: v })} />
             <div style={{ marginBottom: "16px" }}>
               <label style={{ fontSize: "13px", fontWeight: 600, display: "block", marginBottom: "4px", color: "#555" }}>Rol</label>
               <select value={formUser.rol} onChange={(e) => setFormUser({ ...formUser, rol: e.target.value })} style={{ width: "100%", padding: "8px 12px", border: "1px solid #ddd", borderRadius: "8px", fontSize: "14px" }}>
@@ -346,8 +316,8 @@ export default function NegocioPage() {
               </select>
             </div>
             <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
-              <Button variant="secondary" onClick={() => setShowUserForm(false)}>✕</Button>
-              <Button onClick={handleSaveUser}>{editingUser ? "✓" : "+"}</Button>
+              <Button variant="secondary" onClick={() => setShowUserForm(false)}>Cancelar</Button>
+              <Button onClick={handleSaveUser}>{editingUser ? "Guardar" : "Crear"}</Button>
             </div>
           </div>
         </div>

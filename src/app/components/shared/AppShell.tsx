@@ -61,13 +61,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 border: "1px solid #eee",
                 borderRadius: "8px",
                 padding: "6px 10px",
-                fontSize: "16px",
+                fontSize: "12px",
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
+                gap: "4px",
               }}
             >
-              🔓
+              X Salir
             </button>
           </div>
         </header>
