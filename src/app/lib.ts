@@ -1,6 +1,6 @@
 import type { Client, Order, Product } from "./types";
 
-const API = "http://149.50.148.131/api";
+const API = "http://149.50.148.131:4000/api";
 
 function getToken() {
   if (typeof window === "undefined") return null;

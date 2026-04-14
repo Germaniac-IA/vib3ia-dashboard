@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Cristal Piscinas",
-  description: "Dashboard comercial y operativo de Cristal Piscinas",
+  title: "VIB3.ia Dashboard",
+  description: "Dashboard comercial y operativo de VIB3.ia Dashboard",
 };
 
 export default function RootLayout({
