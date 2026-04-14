@@ -1,6 +1,6 @@
 {
-  "name": "cristal-dashboard",
-  "version": "0.1.0",
+  "name": "vib3ia-dashboard",
+  "version": "0.1.0-alpha",
   "private": true,
   "scripts": {
     "dev": "next dev",
