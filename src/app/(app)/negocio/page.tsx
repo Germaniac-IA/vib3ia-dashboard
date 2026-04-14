@@ -322,9 +322,9 @@ export default function NegocioPage() {
               <div style={{ fontSize: "12px", fontWeight: 600, color: "#888", marginBottom: "10px" }}>Redes y web</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                 <Input label="Web" value={formBiz.web_url} onChange={(v) => setFormBiz({ ...formBiz, web_url: v })} placeholder="https://..." />
-                <Input label="Instagram" value={formBiz.instagram_url} onChange={(v) => setFormBiz({ ...formBiz, instagram_url: v })} placeholder="@tuinstagram" />
-                <Input label="Facebook" value={formBiz.facebook_url} onChange={(v) => setFormBiz({ ...formBiz, facebook_url: v })} placeholder="@tufacebook" />
-                <Input label="TikTok" value={formBiz.tiktok_url} onChange={(v) => setFormBiz({ ...formBiz, tiktok_url: v })} placeholder="@tutiktok" />
+                <Input label="Instagram" value={formBiz.instagram_url} onChange={(v) => setFormBiz({ ...formBiz, instagram_url: v })} placeholder="nombredeusuario" />
+                <Input label="Facebook" value={formBiz.facebook_url} onChange={(v) => setFormBiz({ ...formBiz, facebook_url: v })} placeholder="nombredeusuario" />
+                <Input label="TikTok" value={formBiz.tiktok_url} onChange={(v) => setFormBiz({ ...formBiz, tiktok_url: v })} placeholder="nombredeusuario" />
               </div>
             </div>
 
@@ -441,7 +441,7 @@ export default function NegocioPage() {
             {!editingUser && <Input label="Contrasenia" value={formUser.password} onChange={(v) => setFormUser({ ...formUser, password: v })} type="password" placeholder="Minimo 6 caracteres" />}
             <Input label="Email" value={formUser.email} onChange={(v) => setFormUser({ ...formUser, email: v })} placeholder="juan@minegocio.com" />
             <Input label="Telefono" value={formUser.phone} onChange={(v) => setFormUser({ ...formUser, phone: v })} placeholder="+54 264 1234567" />
-            <Input label="Telegram ID" value={formUser.telegram_id} onChange={(v) => setFormUser({ ...formUser, telegram_id: v })} placeholder="@tuusuario o ID numerico" />
+            <Input label="Telegram ID" value={formUser.telegram_id} onChange={(v) => setFormUser({ ...formUser, telegram_id: v })} placeholder="ID numerico de Telegram" />
             <div style={{ marginBottom: "16px" }}>
               <label style={{ fontSize: "13px", fontWeight: 600, display: "block", marginBottom: "4px", color: "#555" }}>Rol</label>
               <select value={formUser.rol} onChange={(e) => setFormUser({ ...formUser, rol: e.target.value })} style={{ width: "100%", padding: "8px 12px", border: "1px solid #ddd", borderRadius: "8px", fontSize: "14px" }}>
