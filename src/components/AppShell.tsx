@@ -1,0 +1,89 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Sidebar from "./Sidebar";
+
+export default function AppShell({ children }: { children: React.ReactNode }) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const router = useRouter();
+
+  async function handleLogout() {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    router.push("/");
+  }
+
+  return (
+    <div style={{ display: "flex", minHeight: "100vh" }}>
+      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+      {/* Main content */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+        {/* Top bar */}
+        <header
+          style={{
+            height: "56px",
+            background: "#fff",
+            borderBottom: "1px solid #eee",
+            display: "flex",
+            alignItems: "center",
+            padding: "0 16px",
+            gap: "12px",
+            position: "sticky",
+            top: 0,
+            zIndex: 30,
+          }}
+        >
+          {/* Hamburger */}
+          <button
+            onClick={() => setSidebarOpen(true)}
+            style={{
+              background: "none",
+              border: "none",
+              fontSize: "22px",
+              cursor: "pointer",
+              padding: "4px",
+            }}
+          >
+            ☰
+          </button>
+
+          <div style={{ flex: 1 }} />
+
+          {/* User */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              fontSize: "13px",
+              color: "#666",
+            }}
+          >
+            <span>👤 admin</span>
+            <button
+              onClick={handleLogout}
+              style={{
+                background: "none",
+                border: "1px solid #ddd",
+                borderRadius: "6px",
+                padding: "4px 10px",
+                fontSize: "12px",
+                cursor: "pointer",
+                color: "#666",
+              }}
+            >
+              Salir
+            </button>
+          </div>
+        </header>
+
+        {/* Page content */}
+        <main style={{ flex: 1, background: "#f5f5f5", padding: "20px" }}>
+          {children}
+        </main>
+      </div>
+    </div>
+  );
+}
