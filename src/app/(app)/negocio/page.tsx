@@ -191,7 +191,7 @@ export default function NegocioPage() {
       <Card style={{ marginBottom: "20px" }}>
         <CardHeader
           title="Datos comerciales"
-          action={!editingBiz && <IconButton variant="ghost" title="Editar" onClick={() => setEditingBiz(true)}>E</IconButton>}
+          action={!editingBiz && <IconButton variant="ghost" title="Editar" onClick={() => setEditingBiz(true)}>✏️</IconButton>}
         />
         {editingBiz ? (
           <div>
@@ -286,8 +286,8 @@ export default function NegocioPage() {
                   {u.rol}
                 </div>
                 <div style={{ display: "flex", gap: "4px" }}>
-                  <IconButton variant="ghost" title="Editar" onClick={() => openEditUser(u)}>E</IconButton>
-                  <IconButton variant="danger" title="Eliminar" onClick={() => handleDeleteUser(u.id)}>X</IconButton>
+                  <IconButton variant="ghost" title="Editar" onClick={() => openEditUser(u)}>✏️</IconButton>
+                  <IconButton variant="danger" title="Eliminar" onClick={() => handleDeleteUser(u.id)}>🗑️</IconButton>
                 </div>
               </div>
             ))}
@@ -300,7 +300,7 @@ export default function NegocioPage() {
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }} onClick={(e) => { if (e.target === e.currentTarget) setShowUserForm(false); }}>
           <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "420px" }}>
             <h3 style={{ fontSize: "17px", fontWeight: 700, marginBottom: "20px" }}>
-              {editingUser ? "Editar usuario" : "Nuevo usuario"}
+              {editingUser ? "✏️ Editar usuario" : "+ Nuevo usuario"}
             </h3>
             <Input label="Nombre" value={formUser.name} onChange={(v) => setFormUser({ ...formUser, name: v })} />
             <Input label="Usuario" value={formUser.username} onChange={(v) => setFormUser({ ...formUser, username: v })} disabled={!!editingUser} />
