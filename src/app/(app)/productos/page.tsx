@@ -7,6 +7,8 @@ import { Card, CardHeader, IconButton, Input, Select, PageTitle, Loading } from 
 type InputItem = { id: number; name: string; unit: string; default_cost: number };
 type ProductComponent = { id: number; input_item_id: number; input_item_name: string; input_unit: string; quantity: number; default_cost: number };
 
+type Category = { id: number; name: string; auto_generate_sku: boolean; sku_counter: number; };
+
 type Product = {
   id: number; name: string; sku: string; sku_externo: string; description: string;
   price: number; cost_price: number; computed_cost: number; unit: string;
@@ -21,6 +23,7 @@ export default function ProductosPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<{id:number;name:string}[]>([]);
   const [brands, setBrands] = useState<{id:number;name:string}[]>([]);
+  const [categoriesFull, setCategoriesFull] = useState<Category[]>([]);
   const [allInputs, setAllInputs] = useState<InputItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -40,11 +43,11 @@ export default function ProductosPage() {
     setLoading(true);
     Promise.all([
       fetchJson<Product[]>("/products"),
-      fetchJson<{id:number;name:string}[]>("/product-categories"),
+      fetchJson<Category[]>("/product-categories"),
       fetchJson<{id:number;name:string}[]>("/product-brands"),
       fetchJson<InputItem[]>("/input-items"),
     ])
-      .then(([p, c, b, i]) => { setProducts(p); setCategories(c); setBrands(b); setAllInputs(i); })
+      .then(([p, c, b, i]) => { setProducts(p); setCategoriesFull(c); setCategories(c.map(x=>({value:String(x.id),label:x.name}))); setBrands(b); setAllInputs(i); })
       .catch(console.error)
       .finally(() => setLoading(false));
   }
@@ -217,11 +220,20 @@ export default function ProductosPage() {
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
               <Input label="Nombre" value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="Nombre del producto" />
-              <Select label="Categoria" value={form.category_id} onChange={(v) => setForm({ ...form, category_id: v })}
+              <Select label="Categoria" value={form.category_id} onChange={(v) => setForm({ ...form, category_id: v, sku: '' })}
                 options={[{value:"",label:"Sin categoria"}, ...categories.map(c=>({value:String(c.id),label:c.name}))]} />
               <Select label="Marca" value={form.brand_id} onChange={(v) => setForm({ ...form, brand_id: v })}
                 options={[{value:"",label:"Sin marca"}, ...brands.map(b=>({value:String(b.id),label:b.name}))]} />
-              <Input label="SKU" value={form.sku} onChange={(v) => setForm({ ...form, sku: v })} placeholder="Codigo interno" />
+              <div>
+                <Input label="SKU" value={form.sku} onChange={(v) => setForm({ ...form, sku: v })} placeholder="Codigo interno o se genera solo" />
+                {form.category_id && !form.sku && (() => {
+                  const cat = categoriesFull.find(c => String(c.id) === form.category_id);
+                  if (!cat || !cat.auto_generate_sku) return null;
+                  const code = (cat.name || '').toUpperCase().replace(/[^A-Z]/g, '').substring(0, 3).padEnd(3, 'X');
+                  const next = (cat.sku_counter || 0) + 1;
+                  return <div style={{ fontSize: "11px", color: "#27ae60", marginTop: "2px" }}>Se generara: {code}-{String(next).padStart(3,'0')}</div>;
+                })()}
+              </div>
               <Input label="SKU externo" value={form.sku_externo} onChange={(v) => setForm({ ...form, sku_externo: v })} placeholder="Codigo del proveedor" />
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", gridColumn: "1 / -1" }}>
                 <Input label="Precio de venta" value={form.price} onChange={(v) => setForm({ ...form, price: v })} placeholder="0.00" type="number" />
