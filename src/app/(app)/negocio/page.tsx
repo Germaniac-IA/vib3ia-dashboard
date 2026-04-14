@@ -13,7 +13,7 @@ type Client = {
   address: string;
   phone: string;
   email: string;
-  business_hours: string;
+  business_hours: Record<string, string | null>;
   city: string;
   instagram_url: string;
   facebook_url: string;
@@ -40,8 +40,22 @@ export default function NegocioPage() {
   const [bizSaved, setBizSaved] = useState(false);
   const [formBiz, setFormBiz] = useState({
     slogan: "", logo_url: "", address: "", phone: "", email: "",
-    business_hours: "", city: "", instagram_url: "", facebook_url: "",
+    city: "", instagram_url: "", facebook_url: "",
     tiktok_url: "", web_url: "",
+  });
+
+  const DAYS = [
+    { key: "monday", label: "Lunes" },
+    { key: "tuesday", label: "Martes" },
+    { key: "wednesday", label: "Miércoles" },
+    { key: "thursday", label: "Jueves" },
+    { key: "friday", label: "Viernes" },
+    { key: "saturday", label: "Sábado" },
+    { key: "sunday", label: "Domingo" },
+  ];
+  const [businessHours, setBusinessHours] = useState<Record<string, string | null>>({
+    monday: "09:00-18:00", tuesday: "09:00-18:00", wednesday: "09:00-18:00",
+    thursday: "09:00-18:00", friday: "09:00-18:00", saturday: "09:00-13:00", sunday: null,
   });
 
   const [showUserForm, setShowUserForm] = useState(false);
@@ -63,13 +77,15 @@ export default function NegocioPage() {
           address: c.address || "",
           phone: c.phone || "",
           email: c.email || "",
-          business_hours: c.business_hours || "09:00-18:00",
           city: c.city || "",
           instagram_url: c.instagram_url || "",
           facebook_url: c.facebook_url || "",
           tiktok_url: c.tiktok_url || "",
           web_url: c.web_url || "",
         });
+        if (c.business_hours) {
+          setBusinessHours(typeof c.business_hours === 'string' ? JSON.parse(c.business_hours) : c.business_hours);
+        }
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -80,7 +96,7 @@ export default function NegocioPage() {
   async function handleSaveBiz() {
     setSavingBiz(true);
     try {
-      const updated = await putJson<Client>("/clients/1", formBiz);
+      const updated = await putJson<Client>("/clients/1", { ...formBiz, business_hours: businessHours });
       setClient(updated);
       setEditingBiz(false);
       setBizSaved(true);
@@ -203,7 +219,38 @@ export default function NegocioPage() {
               <Input label="Ciudad" value={formBiz.city} onChange={(v) => setFormBiz({ ...formBiz, city: v })} placeholder="San Juan" />
               <Input label="Teléfono" value={formBiz.phone} onChange={(v) => setFormBiz({ ...formBiz, phone: v })} placeholder="+54 264 1234567" />
               <Input label="Email" value={formBiz.email} onChange={(v) => setFormBiz({ ...formBiz, email: v })} placeholder="info@minegocio.com" />
-              <Input label="Horario de atención" value={formBiz.business_hours} onChange={(v) => setFormBiz({ ...formBiz, business_hours: v })} placeholder="09:00-18:00" />
+              <div>
+                <label style={{ fontSize: "13px", fontWeight: 600, display: "block", marginBottom: "8px", color: "#555" }}>🕐 Horario de atención</label>
+                {DAYS.map((day) => (
+                  <div key={day.key} style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
+                    <span style={{ width: "100px", fontSize: "13px", color: "#666" }}>{day.label}</span>
+                    {businessHours[day.key] ? (
+                      <div style={{ flex: 1, display: "flex", alignItems: "center", gap: "6px" }}>
+                        <input
+                          value={businessHours[day.key] || ""}
+                          onChange={(e) => setBusinessHours({ ...businessHours, [day.key]: e.target.value })}
+                          style={{ flex: 1, padding: "6px 10px", border: "1px solid #ddd", borderRadius: "8px", fontSize: "13px" }}
+                          placeholder="09:00-18:00"
+                        />
+                        <button
+                          onClick={() => setBusinessHours({ ...businessHours, [day.key]: null })}
+                          style={{ background: "none", border: "none", cursor: "pointer", color: "#e74c3c", fontSize: "14px" }}
+                          title="Cerrado"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setBusinessHours({ ...businessHours, [day.key]: "09:00-18:00" })}
+                        style={{ background: "#27ae60", color: "#fff", border: "none", borderRadius: "6px", padding: "4px 10px", fontSize: "12px", cursor: "pointer" }}
+                      >
+                        + Abrir
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
             <div style={{ marginTop: "8px", borderTop: "1px solid #f0", paddingTop: "12px" }}>
               <div style={{ fontSize: "12px", fontWeight: 600, color: "#888", marginBottom: "8px" }}>🌐 Redes y web</div>
@@ -221,7 +268,19 @@ export default function NegocioPage() {
             {formBiz.address && <div>📍 {formBiz.address}{formBiz.city ? `, ${formBiz.city}` : ""}</div>}
             {formBiz.phone && <div>📞 {formBiz.phone}</div>}
             {formBiz.email && <div>✉️ {formBiz.email}</div>}
-            {formBiz.business_hours && <div>🕐 {formBiz.business_hours}</div>}
+            {client && client.business_hours && (
+              <div style={{ marginTop: "8px" }}>
+                {DAYS.map((day) => (
+                  <div key={day.key} style={{ fontSize: "13px", marginBottom: "2px" }}>
+                    <span style={{ color: "#888" }}>{day.label}: </span>
+                    {client.business_hours[day.key]
+                      ? <span>🕐 {client.business_hours[day.key]}</span>
+                      : <span style={{ color: "#ccc" }}>cerrado</span>
+                    }
+                  </div>
+                ))}
+              </div>
+            )}
             {(formBiz.web_url || formBiz.instagram_url || formBiz.facebook_url || formBiz.tiktok_url) && (
               <div style={{ marginTop: "8px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
                 {formBiz.web_url && <span>🌐</span>}
