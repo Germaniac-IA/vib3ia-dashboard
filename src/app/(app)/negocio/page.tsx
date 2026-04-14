@@ -182,9 +182,22 @@ export default function NegocioPage() {
             </div>
           </div>
         </div>
-        <div style={{ marginTop: "16px", display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", color: "#888" }}>
-          {client?.subdomain}.vib3ia.com
+        <div style={{ marginTop: "16px", display: "flex", flexWrap: "wrap", gap: "12px", fontSize: "13px", color: "#666" }}>
+          {formBiz.address && <span>📍 {formBiz.address}{formBiz.city ? `, ${formBiz.city}` : ""}</span>}
+          {formBiz.phone && <span>📞 {formBiz.phone}</span>}
+          {formBiz.email && <span>✉️ {formBiz.email}</span>}
+          {client?.business_hours && (
+            <span>🕐 {DAYS.filter(d => client.business_hours[d.key]).map(d => `${d.label}: ${client.business_hours[d.key]}`).slice(0,2).join(" · ")}...</span>
+          )}
         </div>
+        {(formBiz.instagram_url || formBiz.facebook_url || formBiz.tiktok_url || formBiz.web_url) && (
+          <div style={{ marginTop: "10px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            {formBiz.web_url && <span>🌐</span>}
+            {formBiz.instagram_url && <span>📸</span>}
+            {formBiz.facebook_url && <span>📘</span>}
+            {formBiz.tiktok_url && <span>🎵</span>}
+          </div>
+        )}
       </Card>
 
       {/* Datos Comerciales */}
