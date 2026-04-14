@@ -10,6 +10,15 @@ type Client = {
   subdomain: string;
   logo_url: string;
   slogan: string;
+  address: string;
+  phone: string;
+  email: string;
+  business_hours: string;
+  city: string;
+  instagram_url: string;
+  facebook_url: string;
+  tiktok_url: string;
+  web_url: string;
 };
 
 type User = {
@@ -29,7 +38,11 @@ export default function NegocioPage() {
   const [editingBiz, setEditingBiz] = useState(false);
   const [savingBiz, setSavingBiz] = useState(false);
   const [bizSaved, setBizSaved] = useState(false);
-  const [formBiz, setFormBiz] = useState({ slogan: "", logo_url: "" });
+  const [formBiz, setFormBiz] = useState({
+    slogan: "", logo_url: "", address: "", phone: "", email: "",
+    business_hours: "", city: "", instagram_url: "", facebook_url: "",
+    tiktok_url: "", web_url: "",
+  });
 
   const [showUserForm, setShowUserForm] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -44,7 +57,19 @@ export default function NegocioPage() {
       .then(([c, u]) => {
         setClient(c);
         setUsers(u);
-        setFormBiz({ slogan: c.slogan || "", logo_url: c.logo_url || "" });
+        setFormBiz({
+          slogan: c.slogan || "",
+          logo_url: c.logo_url || "",
+          address: c.address || "",
+          phone: c.phone || "",
+          email: c.email || "",
+          business_hours: c.business_hours || "09:00-18:00",
+          city: c.city || "",
+          instagram_url: c.instagram_url || "",
+          facebook_url: c.facebook_url || "",
+          tiktok_url: c.tiktok_url || "",
+          web_url: c.web_url || "",
+        });
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -91,50 +116,46 @@ export default function NegocioPage() {
 
   async function handleDeleteUser(id: number) {
     if (!confirm("¿Eliminar este usuario?")) return;
-    try {
-      await deleteJson(`/users/${id}`);
-      loadData();
-    } catch (e) { console.error(e); }
+    try { await deleteJson(`/users/${id}`); loadData(); } catch (e) { console.error(e); }
   }
 
   if (loading) return <Loading />;
 
-  const ROL_LABELS: Record<string, string> = { admin: "Admin", manager: "Manager", operator: "Operador" };
   const ROL_COLORS: Record<string, string> = { admin: "#e74c3c", manager: "#f39c12", operator: "#27ae60" };
 
   return (
     <div style={{ maxWidth: "680px" }}>
       <PageTitle>🏪 Mi Negocio</PageTitle>
 
+      {/* ── Resumen ── */}
+      <div style={{
+        background: "linear-gradient(135deg, #6c63ff15, #1a1a2e08)",
+        border: "1px solid #6c63ff30",
+        borderRadius: "12px",
+        padding: "16px 20px",
+        marginBottom: "20px",
+        fontSize: "13px",
+        color: "#666",
+        lineHeight: "1.6",
+      }}>
+        <strong style={{ color: "#6c63ff" }}>📋 Resumen</strong><br />
+        Aquí verás un resumen de todo lo que podés configurar en tu negocio.
+      </div>
+
       {/* ── Visual Card ── */}
       <Card style={{ marginBottom: "20px", overflow: "hidden" }}>
-        {/* Header con gradiente */}
-        <div
-          style={{
-            margin: "-20px -20px 0",
-            padding: "24px 24px 20px",
-            background: "linear-gradient(135deg, #6c63ff 0%, #1a1a2e 100%)",
-            color: "#fff",
-          }}
-        >
+        <div style={{
+          margin: "-20px -20px 0",
+          padding: "24px 24px 20px",
+          background: "linear-gradient(135deg, #6c63ff 0%, #1a1a2e 100%)",
+          color: "#fff",
+        }}>
           <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
             {formBiz.logo_url ? (
-              <img
-                src={formBiz.logo_url}
-                alt="logo"
-                style={{ width: "56px", height: "56px", borderRadius: "12px", objectFit: "cover", border: "2px solid rgba(255,255,255,0.3)" }}
-                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-              />
+              <img src={formBiz.logo_url} alt="logo" style={{ width: "56px", height: "56px", borderRadius: "12px", objectFit: "cover", border: "2px solid rgba(255,255,255,0.3)" }}
+                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
             ) : (
-              <div
-                style={{
-                  width: "56px", height: "56px", borderRadius: "12px",
-                  background: "rgba(255,255,255,0.15)", display: "flex",
-                  alignItems: "center", justifyContent: "center", fontSize: "24px",
-                }}
-              >
-                🏪
-              </div>
+              <div style={{ width: "56px", height: "56px", borderRadius: "12px", background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px" }}>🏪</div>
             )}
             <div>
               <div style={{ fontSize: "20px", fontWeight: 700 }}>{client?.name}</div>
@@ -146,45 +167,68 @@ export default function NegocioPage() {
             </div>
           </div>
         </div>
-
-        {/* Subdomain */}
         <div style={{ marginTop: "16px", display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", color: "#888" }}>
           🌐 {client?.subdomain}.vib3ia.com
         </div>
-
-        {/* Edit toggle */}
         <div style={{ marginTop: "12px" }}>
-          {editingBiz ? (
+          {!editingBiz ? (
+            <IconButton variant="ghost" title="Editar negocio" onClick={() => setEditingBiz(true)}>✏️</IconButton>
+          ) : (
             <div style={{ display: "flex", gap: "8px" }}>
               <Button onClick={handleSaveBiz} disabled={savingBiz} style={{ fontSize: "12px", padding: "6px 14px" }}>
-                {savingBiz ? "Guardando..." : "✓ Guardar"}
+                {savingBiz ? "..." : "✓"}
               </Button>
-              <Button variant="secondary" onClick={() => setEditingBiz(false)} style={{ fontSize: "12px", padding: "6px 14px" }}>
-                ✕ Cancelar
-              </Button>
+              <Button variant="secondary" onClick={() => setEditingBiz(false)} style={{ fontSize: "12px", padding: "6px 14px" }}>✕</Button>
             </div>
-          ) : (
-            <IconButton variant="ghost" title="Editar negocio" onClick={() => setEditingBiz(true)}>✏️</IconButton>
           )}
         </div>
+      </Card>
 
-        {/* Edit fields */}
-        {editingBiz && (
-          <div style={{ marginTop: "16px", borderTop: "1px solid #f0", paddingTop: "16px" }}>
-            <Input
-              label="URL del logo"
-              value={formBiz.logo_url}
-              onChange={(v) => setFormBiz({ ...formBiz, logo_url: v })}
-              placeholder="https://..."
-            />
-            <Input
-              label="Slogan"
-              value={formBiz.slogan}
-              onChange={(v) => setFormBiz({ ...formBiz, slogan: v })}
-              placeholder="Tu eslogan aquí"
-            />
-            {bizSaved && (
-              <div style={{ color: "#27ae60", fontSize: "13px", fontWeight: 600 }}>✓ Cambios guardados</div>
+      {/* ── Datos Comerciales ── */}
+      <Card style={{ marginBottom: "20px" }}>
+        <CardHeader
+          title="📝 Datos comerciales"
+          action={
+            !editingBiz ? (
+              <IconButton variant="ghost" title="Editar" onClick={() => setEditingBiz(true)}>✏️</IconButton>
+            ) : undefined
+          }
+        />
+        {editingBiz ? (
+          <div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+              <Input label="Slogan" value={formBiz.slogan} onChange={(v) => setFormBiz({ ...formBiz, slogan: v })} placeholder="Tu eslogan" />
+              <Input label="Logo (URL)" value={formBiz.logo_url} onChange={(v) => setFormBiz({ ...formBiz, logo_url: v })} placeholder="https://..." />
+              <Input label="Dirección" value={formBiz.address} onChange={(v) => setFormBiz({ ...formBiz, address: v })} placeholder="Av. Libertador 1234" />
+              <Input label="Ciudad" value={formBiz.city} onChange={(v) => setFormBiz({ ...formBiz, city: v })} placeholder="San Juan" />
+              <Input label="Teléfono" value={formBiz.phone} onChange={(v) => setFormBiz({ ...formBiz, phone: v })} placeholder="+54 264 1234567" />
+              <Input label="Email" value={formBiz.email} onChange={(v) => setFormBiz({ ...formBiz, email: v })} placeholder="info@minegocio.com" />
+              <Input label="Horario de atención" value={formBiz.business_hours} onChange={(v) => setFormBiz({ ...formBiz, business_hours: v })} placeholder="09:00-18:00" />
+            </div>
+            <div style={{ marginTop: "8px", borderTop: "1px solid #f0", paddingTop: "12px" }}>
+              <div style={{ fontSize: "12px", fontWeight: 600, color: "#888", marginBottom: "8px" }}>🌐 Redes y web</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                <Input label="Web" value={formBiz.web_url} onChange={(v) => setFormBiz({ ...formBiz, web_url: v })} placeholder="https://..." />
+                <Input label="Instagram" value={formBiz.instagram_url} onChange={(v) => setFormBiz({ ...formBiz, instagram_url: v })} placeholder="@tuinstagram" />
+                <Input label="Facebook" value={formBiz.facebook_url} onChange={(v) => setFormBiz({ ...formBiz, facebook_url: v })} placeholder="@tufacebook" />
+                <Input label="TikTok" value={formBiz.tiktok_url} onChange={(v) => setFormBiz({ ...formBiz, tiktok_url: v })} placeholder="@tutiktok" />
+              </div>
+            </div>
+            {bizSaved && <div style={{ color: "#27ae60", fontSize: "13px", fontWeight: 600, marginTop: "8px" }}>✓ Cambios guardados</div>}
+          </div>
+        ) : (
+          <div style={{ fontSize: "13px", color: "#666", lineHeight: "1.8" }}>
+            {formBiz.address && <div>📍 {formBiz.address}{formBiz.city ? `, ${formBiz.city}` : ""}</div>}
+            {formBiz.phone && <div>📞 {formBiz.phone}</div>}
+            {formBiz.email && <div>✉️ {formBiz.email}</div>}
+            {formBiz.business_hours && <div>🕐 {formBiz.business_hours}</div>}
+            {(formBiz.web_url || formBiz.instagram_url || formBiz.facebook_url || formBiz.tiktok_url) && (
+              <div style={{ marginTop: "8px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                {formBiz.web_url && <span>🌐</span>}
+                {formBiz.instagram_url && <span>📸</span>}
+                {formBiz.facebook_url && <span>📘</span>}
+                {formBiz.tiktok_url && <span>🎵</span>}
+              </div>
             )}
           </div>
         )}
@@ -196,53 +240,22 @@ export default function NegocioPage() {
           title="👥 Mi equipo"
           action={<IconButton variant="primary" title="Agregar usuario" onClick={openNewUser}>+</IconButton>}
         />
-
         {users.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "24px", color: "#aaa", fontSize: "13px" }}>
-            Sin usuarios agregados
-          </div>
+          <div style={{ textAlign: "center", padding: "24px", color: "#aaa", fontSize: "13px" }}>Sin usuarios</div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
             {users.map((u) => (
-              <div
-                key={u.id}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
-                  padding: "10px 12px",
-                  background: "#f8f8f8",
-                  borderRadius: "10px",
-                }}
-              >
-                {/* Avatar */}
-                <div
-                  style={{
-                    width: "36px", height: "36px", borderRadius: "50%",
-                    background: "#6c63ff22",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: "16px", flexShrink: 0,
-                  }}
-                >
+              <div key={u.id} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 12px", background: "#f8f8f8", borderRadius: "10px" }}>
+                <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: "#6c63ff22", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", flexShrink: 0 }}>
                   {u.name ? u.name[0].toUpperCase() : u.username[0].toUpperCase()}
                 </div>
-
-                {/* Info */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: "14px", fontWeight: 600, color: "#333" }}>{u.name || u.username}</div>
                   <div style={{ fontSize: "12px", color: "#aaa" }}>{u.email || u.username}</div>
                 </div>
-
-                {/* Rol badge */}
-                <div style={{
-                  padding: "2px 8px", borderRadius: "10px", fontSize: "11px", fontWeight: 600,
-                  background: (ROL_COLORS[u.rol] || "#888") + "22",
-                  color: ROL_COLORS[u.rol] || "#888",
-                }}>
-                  {ROL_LABELS[u.rol] || u.rol}
+                <div style={{ padding: "2px 8px", borderRadius: "10px", fontSize: "11px", fontWeight: 600, background: (ROL_COLORS[u.rol] || "#888") + "22", color: ROL_COLORS[u.rol] || "#888" }}>
+                  {u.rol}
                 </div>
-
-                {/* Actions */}
                 <div style={{ display: "flex", gap: "4px" }}>
                   <IconButton variant="ghost" title="Editar" onClick={() => openEditUser(u)}>✏️</IconButton>
                   <IconButton variant="danger" title="Eliminar" onClick={() => handleDeleteUser(u.id)}>🗑️</IconButton>
@@ -255,48 +268,27 @@ export default function NegocioPage() {
 
       {/* ── User Form Modal ── */}
       {showUserForm && (
-        <div
-          style={{
-            position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)",
-            zIndex: 100, display: "flex", alignItems: "center",
-            justifyContent: "center", padding: "20px",
-          }}
-          onClick={(e) => { if (e.target === e.currentTarget) setShowUserForm(false); }}
-        >
-          <div
-            style={{
-              background: "#fff", borderRadius: "16px", padding: "24px",
-              width: "100%", maxWidth: "420px",
-            }}
-          >
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }} onClick={(e) => { if (e.target === e.currentTarget) setShowUserForm(false); }}>
+          <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "420px" }}>
             <h3 style={{ fontSize: "17px", fontWeight: 700, marginBottom: "20px" }}>
-              {editingUser ? "✏️ Editar usuario" : "+ Nuevo usuario"}
+              {editingUser ? "✏️" : "+"} Usuario
             </h3>
-
             <Input label="Nombre" value={formUser.name} onChange={(v) => setFormUser({ ...formUser, name: v })} />
             <Input label="Usuario" value={formUser.username} onChange={(v) => setFormUser({ ...formUser, username: v })} disabled={!!editingUser} />
-            {!editingUser && (
-              <Input label="Contraseña" value={formUser.password} onChange={(v) => setFormUser({ ...formUser, password: v })} type="password" />
-            )}
+            {!editingUser && <Input label="Contraseña" value={formUser.password} onChange={(v) => setFormUser({ ...formUser, password: v })} type="password" />}
             <Input label="Email" value={formUser.email} onChange={(v) => setFormUser({ ...formUser, email: v })} />
             <Input label="Teléfono" value={formUser.phone} onChange={(v) => setFormUser({ ...formUser, phone: v })} />
-
             <div style={{ marginBottom: "16px" }}>
               <label style={{ fontSize: "13px", fontWeight: 600, display: "block", marginBottom: "4px", color: "#555" }}>Rol</label>
-              <select
-                value={formUser.rol}
-                onChange={(e) => setFormUser({ ...formUser, rol: e.target.value })}
-                style={{ width: "100%", padding: "8px 12px", border: "1px solid #ddd", borderRadius: "8px", fontSize: "14px" }}
-              >
+              <select value={formUser.rol} onChange={(e) => setFormUser({ ...formUser, rol: e.target.value })} style={{ width: "100%", padding: "8px 12px", border: "1px solid #ddd", borderRadius: "8px", fontSize: "14px" }}>
                 <option value="operator">Operador</option>
                 <option value="manager">Manager</option>
                 <option value="admin">Admin</option>
               </select>
             </div>
-
             <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
               <Button variant="secondary" onClick={() => setShowUserForm(false)}>✕</Button>
-              <Button onClick={handleSaveUser}>{editingUser ? "✓ Guardar" : "+ Crear"}</Button>
+              <Button onClick={handleSaveUser}>{editingUser ? "✓" : "+"}</Button>
             </div>
           </div>
         </div>
