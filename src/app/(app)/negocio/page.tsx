@@ -12,13 +12,24 @@ type Client = {
   slogan: string;
   address: string;
   phone: string;
+  whatsapp: string;
   email: string;
-  business_hours: Record<string, string | null>;
+  business_hours: Record<string, string[]>;
   city: string;
   instagram_url: string;
   facebook_url: string;
   tiktok_url: string;
   web_url: string;
+};
+
+type FiscalData = {
+  id: number;
+  client_id: number;
+  razon_social: string;
+  cuit: string;
+  condicion_iva: string;
+  situacion_iibb: string;
+  numero_iibb: string;
 };
 
 type User = {
@@ -27,8 +38,8 @@ type User = {
   name: string;
   email: string;
   phone: string;
+  telegram_id: string;
   rol: string;
-  is_active: boolean;
 };
 
 const DAYS = [
@@ -43,38 +54,48 @@ const DAYS = [
 
 export default function NegocioPage() {
   const [client, setClient] = useState<Client | null>(null);
+  const [fiscalData, setFiscalData] = useState<FiscalData | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingBiz, setEditingBiz] = useState(false);
   const [savingBiz, setSavingBiz] = useState(false);
   const [bizSaved, setBizSaved] = useState(false);
   const [formBiz, setFormBiz] = useState({
-    slogan: "", logo_url: "", address: "", phone: "", email: "",
+    slogan: "", logo_url: "", address: "", phone: "", whatsapp: "", email: "",
     city: "", instagram_url: "", facebook_url: "", tiktok_url: "", web_url: "",
   });
-  const [businessHours, setBusinessHours] = useState<Record<string, string | null>>({
-    monday: "09:00-18:00", tuesday: "09:00-18:00", wednesday: "09:00-18:00",
-    thursday: "09:00-18:00", friday: "09:00-18:00", saturday: "09:00-13:00", sunday: null,
+  const [businessHours, setBusinessHours] = useState<Record<string, string[]>>({
+    monday: ["09:00-18:00"], tuesday: ["09:00-18:00"], wednesday: ["09:00-18:00"],
+    thursday: ["09:00-18:00"], friday: ["09:00-18:00"], saturday: ["09:00-13:00"], sunday: [],
   });
+
+  const [showFiscalForm, setShowFiscalForm] = useState(false);
+  const [editingFiscal, setEditingFiscal] = useState(false);
+  const [savingFiscal, setSavingFiscal] = useState(false);
+  const [fiscalSaved, setFiscalSaved] = useState(false);
+  const [formFiscal, setFormFiscal] = useState({ razon_social: "", cuit: "", condicion_iva: "", situacion_iibb: "", numero_iibb: "" });
 
   const [showUserForm, setShowUserForm] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [formUser, setFormUser] = useState({ username: "", password: "", name: "", email: "", phone: "", rol: "operator" });
+  const [formUser, setFormUser] = useState({ username: "", password: "", name: "", email: "", phone: "", telegram_id: "", rol: "operator" });
 
   function loadData() {
     setLoading(true);
     Promise.all([
       fetchJson<Client>("/clients/1"),
       fetchJson<User[]>("/users"),
+      fetchJson<FiscalData | null>("/fiscal-data/1"),
     ])
-      .then(([c, u]) => {
+      .then(([c, u, f]) => {
         setClient(c);
         setUsers(u);
+        setFiscalData(f);
         setFormBiz({
           slogan: c.slogan || "",
           logo_url: c.logo_url || "",
           address: c.address || "",
           phone: c.phone || "",
+          whatsapp: c.whatsapp || "",
           email: c.email || "",
           city: c.city || "",
           instagram_url: c.instagram_url || "",
@@ -83,7 +104,22 @@ export default function NegocioPage() {
           web_url: c.web_url || "",
         });
         if (c.business_hours) {
-          setBusinessHours(typeof c.business_hours === "string" ? JSON.parse(c.business_hours) : c.business_hours);
+          const bh = typeof c.business_hours === "string" ? JSON.parse(c.business_hours) : c.business_hours;
+          const normalized: Record<string, string[]> = {};
+          DAYS.forEach(d => {
+            const val = bh[d.key];
+            normalized[d.key] = Array.isArray(val) ? val : [];
+          });
+          setBusinessHours(normalized);
+        }
+        if (f) {
+          setFormFiscal({
+            razon_social: f.razon_social || "",
+            cuit: f.cuit || "",
+            condicion_iva: f.condicion_iva || "",
+            situacion_iibb: f.situacion_iibb || "",
+            numero_iibb: f.numero_iibb || "",
+          });
         }
       })
       .catch(console.error)
@@ -104,6 +140,18 @@ export default function NegocioPage() {
     finally { setSavingBiz(false); }
   }
 
+  async function handleSaveFiscal() {
+    setSavingFiscal(true);
+    try {
+      const updated = await putJson<FiscalData>("/fiscal-data/1", { ...formFiscal, client_id: 1 });
+      setFiscalData(updated);
+      setEditingFiscal(false);
+      setFiscalSaved(true);
+      setTimeout(() => setFiscalSaved(false), 2000);
+    } catch (e) { console.error(e); }
+    finally { setSavingFiscal(false); }
+  }
+
   function openNewUser() {
     setEditingUser(null);
     setFormUser({ username: "", password: "", name: "", email: "", phone: "", rol: "operator" });
@@ -112,14 +160,14 @@ export default function NegocioPage() {
 
   function openEditUser(u: User) {
     setEditingUser(u);
-    setFormUser({ username: u.username, password: "", name: u.name || "", email: u.email || "", phone: u.phone || "", rol: u.rol });
+    setFormUser({ username: u.username, password: "", name: u.name || "", email: u.email || "", phone: u.phone || "", telegram_id: u.telegram_id || "", rol: u.rol });
     setShowUserForm(true);
   }
 
   async function handleSaveUser() {
     try {
       if (editingUser) {
-        await putJson(`/users/${editingUser.id}`, formUser);
+        await putJson(`/users/${editingUser.id}`, { name: formUser.name, email: formUser.email, phone: formUser.phone, telegram_id: formUser.telegram_id, rol: formUser.rol });
       } else {
         if (!formUser.username || !formUser.password) return alert("Usuario y contrasenia requeridos");
         await postJson("/users", formUser);
@@ -137,6 +185,14 @@ export default function NegocioPage() {
   if (loading) return <Loading />;
 
   const ROL_COLORS: Record<string, string> = { admin: "#e74c3c", manager: "#f39c12", operator: "#27ae60" };
+
+  // Build social badges for visual card
+  const socialBadges = [
+    formBiz.web_url ? { label: formBiz.web_url, icon: "🌐" } : null,
+    formBiz.instagram_url ? { label: formBiz.instagram_url, icon: "📸" } : null,
+    formBiz.facebook_url ? { label: formBiz.facebook_url, icon: "📘" } : null,
+    formBiz.tiktok_url ? { label: formBiz.tiktok_url, icon: "🎵" } : null,
+  ].filter((x): x is { label: string; icon: string } => x !== null);
 
   return (
     <div style={{ maxWidth: "680px" }}>
@@ -157,7 +213,7 @@ export default function NegocioPage() {
         Aqui veras un resumen de todo lo que podes configurar en tu negocio.
       </div>
 
-      {/* Visual Card - solo muestra datos */}
+      {/* VISUAL CARD */}
       <Card style={{ marginBottom: "20px", overflow: "hidden" }}>
         <div style={{
           margin: "-20px -20px 0",
@@ -170,7 +226,7 @@ export default function NegocioPage() {
               <img src={formBiz.logo_url} alt="logo" style={{ width: "56px", height: "56px", borderRadius: "12px", objectFit: "cover", border: "2px solid rgba(255,255,255,0.3)" }}
                 onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
             ) : (
-              <div style={{ width: "56px", height: "56px", borderRadius: "12px", background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px" }}>T</div>
+              <div style={{ width: "56px", height: "56px", borderRadius: "12px", background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "28px" }}>🏪</div>
             )}
             <div>
               <div style={{ fontSize: "20px", fontWeight: 700 }}>{client?.name}</div>
@@ -182,25 +238,28 @@ export default function NegocioPage() {
             </div>
           </div>
         </div>
+
+        {/* Contact info row */}
         <div style={{ marginTop: "16px", display: "flex", flexWrap: "wrap", gap: "12px", fontSize: "13px", color: "#666" }}>
           {formBiz.address && <span>📍 {formBiz.address}{formBiz.city ? `, ${formBiz.city}` : ""}</span>}
           {formBiz.phone && <span>📞 {formBiz.phone}</span>}
+          {formBiz.whatsapp && <span>💬 {formBiz.whatsapp}</span>}
           {formBiz.email && <span>✉️ {formBiz.email}</span>}
-          {client?.business_hours && (
-            <span>🕐 {DAYS.filter(d => client.business_hours[d.key]).map(d => `${d.label}: ${client.business_hours[d.key]}`).slice(0,2).join(" · ")}...</span>
-          )}
         </div>
-        {(formBiz.instagram_url || formBiz.facebook_url || formBiz.tiktok_url || formBiz.web_url) && (
-          <div style={{ marginTop: "10px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
-            {formBiz.web_url && <span>🌐</span>}
-            {formBiz.instagram_url && <span>📸</span>}
-            {formBiz.facebook_url && <span>📘</span>}
-            {formBiz.tiktok_url && <span>🎵</span>}
+
+        {/* Social badges */}
+        {socialBadges.length > 0 && (
+          <div style={{ marginTop: "12px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            {socialBadges.map((b) => (
+              <span key={b.label} style={{ background: "#f0f0f0", padding: "3px 10px", borderRadius: "20px", fontSize: "12px" }}>
+                {b.icon} {b.label}
+              </span>
+            ))}
           </div>
         )}
       </Card>
 
-      {/* Datos Comerciales */}
+      {/* DATOS COMERCIALES */}
       <Card style={{ marginBottom: "20px" }}>
         <CardHeader
           title="Datos comerciales"
@@ -214,6 +273,7 @@ export default function NegocioPage() {
               <Input label="Direccion" value={formBiz.address} onChange={(v) => setFormBiz({ ...formBiz, address: v })} placeholder="Av. Libertador 1234" />
               <Input label="Ciudad" value={formBiz.city} onChange={(v) => setFormBiz({ ...formBiz, city: v })} placeholder="San Juan" />
               <Input label="Telefono" value={formBiz.phone} onChange={(v) => setFormBiz({ ...formBiz, phone: v })} placeholder="+54 264 1234567" />
+              <Input label="WhatsApp" value={formBiz.whatsapp} onChange={(v) => setFormBiz({ ...formBiz, whatsapp: v })} placeholder="+54 264 9876543" />
               <Input label="Email" value={formBiz.email} onChange={(v) => setFormBiz({ ...formBiz, email: v })} placeholder="info@minegocio.com" />
             </div>
 
@@ -221,20 +281,38 @@ export default function NegocioPage() {
             <div style={{ marginTop: "16px", paddingTop: "16px", borderTop: "1px solid #f0" }}>
               <div style={{ fontSize: "12px", fontWeight: 600, color: "#888", marginBottom: "10px" }}>Horarios de atencion</div>
               {DAYS.map((day) => (
-                <div key={day.key} style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
-                  <span style={{ width: "90px", fontSize: "13px", color: "#666" }}>{day.label}</span>
-                  {businessHours[day.key] ? (
-                    <div style={{ flex: 1, display: "flex", alignItems: "center", gap: "6px" }}>
+                <div key={day.key} style={{ marginBottom: "12px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                    <span style={{ width: "90px", fontSize: "13px", color: "#666", fontWeight: 600 }}>{day.label}</span>
+                    <button
+                      onClick={() => setBusinessHours({ ...businessHours, [day.key]: [...(businessHours[day.key] || []), "09:00-18:00"] })}
+                      style={{ background: "#6c63ff", color: "#fff", border: "none", borderRadius: "6px", padding: "2px 10px", fontSize: "12px", cursor: "pointer" }}
+                    >+ franja</button>
+                    {businessHours[day.key]?.length === 0 && (
+                      <span style={{ fontSize: "12px", color: "#ccc" }}>cerrado</span>
+                    )}
+                  </div>
+                  {businessHours[day.key]?.map((slot, idx) => (
+                    <div key={idx} style={{ display: "flex", alignItems: "center", gap: "6px", marginLeft: "98px", marginBottom: "4px" }}>
                       <input
-                        value={businessHours[day.key] || ""}
-                        onChange={(e) => setBusinessHours({ ...businessHours, [day.key]: e.target.value })}
-                        style={{ flex: 1, padding: "6px 10px", border: "1px solid #ddd", borderRadius: "8px", fontSize: "13px" }}
+                        value={slot}
+                        onChange={(e) => {
+                          const updated = [...businessHours[day.key]];
+                          updated[idx] = e.target.value;
+                          setBusinessHours({ ...businessHours, [day.key]: updated });
+                        }}
+                        style={{ flex: 1, padding: "5px 10px", border: "1px solid #ddd", borderRadius: "8px", fontSize: "13px" }}
+                        placeholder="09:00-13:00"
                       />
-                      <button onClick={() => setBusinessHours({ ...businessHours, [day.key]: null })} style={{ background: "none", border: "none", cursor: "pointer", color: "#e74c3c", fontSize: "14px" }}>x</button>
+                      <button
+                        onClick={() => {
+                          const updated = businessHours[day.key].filter((_, i) => i !== idx);
+                          setBusinessHours({ ...businessHours, [day.key]: updated });
+                        }}
+                        style={{ background: "none", border: "none", cursor: "pointer", color: "#e74c3c", fontSize: "14px" }}
+                      >✕</button>
                     </div>
-                  ) : (
-                    <button onClick={() => setBusinessHours({ ...businessHours, [day.key]: "09:00-18:00" })} style={{ background: "#27ae60", color: "#fff", border: "none", borderRadius: "6px", padding: "4px 10px", fontSize: "12px", cursor: "pointer" }}>+ Abrir</button>
-                  )}
+                  ))}
                 </div>
               ))}
             </div>
@@ -259,15 +337,18 @@ export default function NegocioPage() {
             {bizSaved && <div style={{ color: "#27ae60", fontSize: "13px", fontWeight: 600, marginTop: "8px" }}>Cambios guardados</div>}
           </div>
         ) : (
-          <div style={{ fontSize: "13px", color: "#666", lineHeight: "1.8" }}>
-            {formBiz.address && <div>{formBiz.address}{formBiz.city ? `, ${formBiz.city}` : ""}</div>}
-            {formBiz.phone && <div>{formBiz.phone}</div>}
-            {formBiz.email && <div>{formBiz.email}</div>}
-            {client?.business_hours && (
-              <div style={{ marginTop: "8px" }}>
+          /* View mode: only show schedule */
+          <div style={{ fontSize: "13px", color: "#666" }}>
+            {businessHours && (
+              <div>
                 {DAYS.map((day) => (
-                  <div key={day.key}>
-                    {day.label}: {client.business_hours[day.key] || "cerrado"}
+                  <div key={day.key} style={{ marginBottom: "4px" }}>
+                    <span style={{ color: "#888" }}>{day.label}: </span>
+                    {businessHours[day.key]?.length > 0
+                      ? businessHours[day.key].map((slot, i) => (
+                          <span key={i} style={{ marginRight: "6px" }}>🕐 {slot}</span>
+                        ))
+                      : <span style={{ color: "#ccc" }}>cerrado</span>}
                   </div>
                 ))}
               </div>
@@ -276,7 +357,43 @@ export default function NegocioPage() {
         )}
       </Card>
 
-      {/* Mi Equipo */}
+      {/* DATOS FISCALES */}
+      <Card style={{ marginBottom: "20px" }}>
+        <CardHeader
+          title="Datos fiscales"
+          action={!editingFiscal && <IconButton variant="ghost" title="Editar" onClick={() => { setEditingFiscal(true); setShowFiscalForm(true); }}>✏️</IconButton>}
+        />
+        {showFiscalForm && editingFiscal ? (
+          <div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+              <Input label="Razon social" value={formFiscal.razon_social} onChange={(v) => setFormFiscal({ ...formFiscal, razon_social: v })} placeholder="Nombre juridico de la empresa" />
+              <Input label="CUIT" value={formFiscal.cuit} onChange={(v) => setFormFiscal({ ...formFiscal, cuit: v })} placeholder="XX-XXXXXXXX-X" />
+              <Input label="Condicion IVA" value={formFiscal.condicion_iva} onChange={(v) => setFormFiscal({ ...formFiscal, condicion_iva: v })} placeholder="Responsable Inscripto" />
+              <Input label="Situacion IIBB" value={formFiscal.situacion_iibb} onChange={(v) => setFormFiscal({ ...formFiscal, situacion_iibb: v })} placeholder="Activo" />
+              <Input label="Nro IIBB" value={formFiscal.numero_iibb} onChange={(v) => setFormFiscal({ ...formFiscal, numero_iibb: v })} placeholder="123456-00" />
+            </div>
+            <div style={{ display: "flex", gap: "8px", marginTop: "16px", paddingTop: "16px", borderTop: "1px solid #f0" }}>
+              <Button onClick={handleSaveFiscal} disabled={savingFiscal}>
+                {savingFiscal ? "Guardando..." : "Guardar cambios"}
+              </Button>
+              <Button variant="secondary" onClick={() => { setEditingFiscal(false); setShowFiscalForm(false); }}>Cancelar</Button>
+            </div>
+            {fiscalSaved && <div style={{ color: "#27ae60", fontSize: "13px", fontWeight: 600, marginTop: "8px" }}>Cambios guardados</div>}
+          </div>
+        ) : (
+          <div style={{ fontSize: "13px", color: "#666" }}>
+            {fiscalData?.razon_social && <div>🏢 {fiscalData.razon_social}</div>}
+            {fiscalData?.cuit && <div>📋 CUIT: {fiscalData.cuit}</div>}
+            {fiscalData?.condicion_iva && <div>📐 {fiscalData.condicion_iva}</div>}
+            {fiscalData?.situacion_iibb && <div>📍 IIBB: {fiscalData.situacion_iibb}{fiscalData.numero_iibb ? ` - ${fiscalData.numero_iibb}` : ""}</div>}
+            {!fiscalData?.razon_social && !fiscalData?.cuit && (
+              <div style={{ color: "#ccc" }}>Sin datos fiscales cargados. Click ✏️ para agregar.</div>
+            )}
+          </div>
+        )}
+      </Card>
+
+      {/* MI EQUIPO */}
       <Card>
         <CardHeader
           title="Mi equipo"
@@ -293,7 +410,11 @@ export default function NegocioPage() {
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: "14px", fontWeight: 600, color: "#333" }}>{u.name || u.username}</div>
-                  <div style={{ fontSize: "12px", color: "#aaa" }}>{u.email || u.username}</div>
+                  <div style={{ fontSize: "12px", color: "#aaa" }}>
+                  {u.email && <span>✉️ {u.email}</span>}
+                  {u.phone && <span style={{ marginLeft: "8px" }}>📞 {u.phone}</span>}
+                  {u.telegram_id && <span style={{ marginLeft: "8px" }}>✈️ {u.telegram_id}</span>}
+                </div>
                 </div>
                 <div style={{ padding: "2px 8px", borderRadius: "10px", fontSize: "11px", fontWeight: 600, background: (ROL_COLORS[u.rol] || "#888") + "22", color: ROL_COLORS[u.rol] || "#888" }}>
                   {u.rol}
@@ -315,11 +436,12 @@ export default function NegocioPage() {
             <h3 style={{ fontSize: "17px", fontWeight: 700, marginBottom: "20px" }}>
               {editingUser ? "✏️ Editar usuario" : "+ Nuevo usuario"}
             </h3>
-            <Input label="Nombre" value={formUser.name} onChange={(v) => setFormUser({ ...formUser, name: v })} />
-            <Input label="Usuario" value={formUser.username} onChange={(v) => setFormUser({ ...formUser, username: v })} disabled={!!editingUser} />
-            {!editingUser && <Input label="Contrasenia" value={formUser.password} onChange={(v) => setFormUser({ ...formUser, password: v })} type="password" />}
-            <Input label="Email" value={formUser.email} onChange={(v) => setFormUser({ ...formUser, email: v })} />
-            <Input label="Telefono" value={formUser.phone} onChange={(v) => setFormUser({ ...formUser, phone: v })} />
+            <Input label="Nombre" value={formUser.name} onChange={(v) => setFormUser({ ...formUser, name: v })} placeholder="Juan Perez" />
+            <Input label="Usuario" value={formUser.username} onChange={(v) => setFormUser({ ...formUser, username: v })} disabled={!!editingUser} placeholder="juanperez" />
+            {!editingUser && <Input label="Contrasenia" value={formUser.password} onChange={(v) => setFormUser({ ...formUser, password: v })} type="password" placeholder="Minimo 6 caracteres" />}
+            <Input label="Email" value={formUser.email} onChange={(v) => setFormUser({ ...formUser, email: v })} placeholder="juan@minegocio.com" />
+            <Input label="Telefono" value={formUser.phone} onChange={(v) => setFormUser({ ...formUser, phone: v })} placeholder="+54 264 1234567" />
+            <Input label="Telegram ID" value={formUser.telegram_id} onChange={(v) => setFormUser({ ...formUser, telegram_id: v })} placeholder="@tuusuario o ID numerico" />
             <div style={{ marginBottom: "16px" }}>
               <label style={{ fontSize: "13px", fontWeight: 600, display: "block", marginBottom: "4px", color: "#555" }}>Rol</label>
               <select value={formUser.rol} onChange={(e) => setFormUser({ ...formUser, rol: e.target.value })} style={{ width: "100%", padding: "8px 12px", border: "1px solid #ddd", borderRadius: "8px", fontSize: "14px" }}>
