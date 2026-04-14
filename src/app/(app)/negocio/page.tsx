@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchJson, postJson } from "../../../lib";
-import { Card, CardHeader, Button, Input, PageTitle, Loading } from "../../../components/UI";
+import { fetchJson, postJson } from "../../lib";
+import { Card, CardHeader, Button, Input, PageTitle, Loading } from "../../components/shared/UI";
 
 type Client = {
   id: number;

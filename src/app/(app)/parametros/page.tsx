@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchJson, postJson, putJson, deleteJson } from "../../../lib";
-import { Card, CardHeader, Button, Input, PageTitle, Loading, Empty, Badge } from "../../../components/UI";
+import { fetchJson, postJson, putJson, deleteJson } from "../../lib";
+import { Card, CardHeader, Button, Input, PageTitle, Loading, Empty, Badge } from "../../components/shared/UI";
 
 // ─── Payment Method ────────────────────────────────────────────
 type PaymentMethod = { id: number; name: string; is_active: boolean; sort_order: number };

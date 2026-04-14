@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchJson, postJson, putJson, deleteJson } from "../../../lib";
-import { Card, CardHeader, Button, Input, Select, PageTitle, Loading, Empty, Badge } from "../../../components/UI";
+import { fetchJson, postJson, putJson, deleteJson } from "../../lib";
+import { Card, CardHeader, Button, Input, Select, PageTitle, Loading, Empty, Badge } from "../../components/shared/UI";
 
 type Agent = {
   id: number;

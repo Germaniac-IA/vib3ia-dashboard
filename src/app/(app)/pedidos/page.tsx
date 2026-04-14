@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchJson, putJson } from "../../../lib";
-import { Card, Button, PageTitle, Loading, Empty, Badge } from "../../../components/UI";
+import { fetchJson, putJson } from "../../lib";
+import { Card, Button, PageTitle, Loading, Empty, Badge } from "../../components/shared/UI";
 
 type Order = {
   id: number;

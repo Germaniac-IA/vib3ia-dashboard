@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import AppShell from "../../components/AppShell";
+import AppShell from "../components/shared/AppShell";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
