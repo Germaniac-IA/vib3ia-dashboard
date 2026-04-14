@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { fetchJson, postJson, putJson } from "../../lib";
-import { Card, Button, Input, Select, PageTitle, Loading, Empty, Badge } from "../../components/shared/UI";
+import { Card, IconButton, Input, PageTitle, Loading, Empty } from "../../components/shared/UI";
 
 type Lead = {
   id: number;
@@ -15,13 +15,13 @@ type Lead = {
   created_at: string;
 };
 
-const STATUS_COLORS: Record<string, string> = {
-  new: "#3498db",
-  contacted: "#f39c12",
-  qualified: "#9b59b6",
-  converted: "#27ae60",
-  discarded: "#95a5a6",
-};
+const STATUS_OPTIONS = [
+  { value: "new", label: "📋 Nuevo" },
+  { value: "contacted", label: "📞 Contactado" },
+  { value: "qualified", label: "⭐ Calificado" },
+  { value: "converted", label: "💰 Convertido" },
+  { value: "discarded", label: "🗑️ Descartado" },
+];
 
 export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -59,7 +59,7 @@ export default function LeadsPage() {
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
         <PageTitle>📍 Leads</PageTitle>
-        <Button onClick={() => setShowForm(!showForm)}>{showForm ? "Cerrar" : "+ Nuevo Lead"}</Button>
+        <IconButton variant="primary" title="Nuevo lead" onClick={() => setShowForm(!showForm)}>+</IconButton>
       </div>
 
       {showForm && (
@@ -68,17 +68,18 @@ export default function LeadsPage() {
             <Input label="Nombre" value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
             <Input label="Teléfono" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} />
             <Input label="Email" value={form.email} onChange={(v) => setForm({ ...form, email: v })} />
-            <Input label="Fuente" value={form.source} onChange={(v) => setForm({ ...form, source: v })} placeholder="Instagram, Google, referred..." />
+            <Input label="Fuente" value={form.source} onChange={(v) => setForm({ ...form, source: v })} />
             <Input label="Notas" value={form.notes} onChange={(v) => setForm({ ...form, notes: v })} />
           </div>
-          <div style={{ marginTop: "12px" }}>
-            <Button onClick={handleAdd}>Agregar Lead</Button>
+          <div style={{ marginTop: "12px", display: "flex", gap: "8px" }}>
+            <IconButton variant="primary" onClick={handleAdd}>✓</IconButton>
+            <IconButton variant="secondary" onClick={() => setShowForm(false)}>✕</IconButton>
           </div>
         </Card>
       )}
 
       {loading ? <Loading /> : leads.length === 0 ? (
-        <Empty message="No hay leads" />
+        <Empty message="Sin leads" />
       ) : (
         <div style={{ display: "grid", gap: "10px" }}>
           {leads.map((l) => (
@@ -87,21 +88,19 @@ export default function LeadsPage() {
                 <div>
                   <div style={{ fontWeight: 700, fontSize: "15px" }}>{l.name || "Sin nombre"}</div>
                   <div style={{ fontSize: "12px", color: "#666", marginTop: "2px" }}>
-                    📞 {l.phone} · {new Date(l.created_at).toLocaleDateString("es-AR")}
+                    📞 {l.phone || "—"} · {new Date(l.created_at).toLocaleDateString("es-AR")}
                   </div>
-                  {l.source && <div style={{ fontSize: "12px", color: "#888", marginTop: "2px" }}>Fuente: {l.source}</div>}
+                  {l.source && <div style={{ fontSize: "12px", color: "#888", marginTop: "2px" }}>📢 {l.source}</div>}
                   {l.notes && <div style={{ fontSize: "12px", color: "#aaa", marginTop: "4px" }}>{l.notes}</div>}
                 </div>
                 <select
                   value={l.status}
                   onChange={(e) => updateStatus(l.id, e.target.value)}
-                  style={{ padding: "6px 10px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }}
+                  style={{ padding: "6px 10px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px", background: "#fff" }}
                 >
-                  <option value="new">Nuevo</option>
-                  <option value="contacted">Contactado</option>
-                  <option value="qualified">Calificado</option>
-                  <option value="converted">Convertido</option>
-                  <option value="discarded">Descartado</option>
+                  {STATUS_OPTIONS.map((s) => (
+                    <option key={s.value} value={s.value}>{s.label}</option>
+                  ))}
                 </select>
               </div>
             </Card>

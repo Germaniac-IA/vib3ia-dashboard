@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchJson, postJson, deleteJson } from "../../lib";
-import { Card, CardHeader, Button, Input, Select, PageTitle, Loading, Empty, Badge } from "../../components/shared/UI";
+import { fetchJson, postJson } from "../../lib";
+import { Card, CardHeader, IconButton, Input, Select, PageTitle, Loading, Empty, Badge } from "../../components/shared/UI";
 
 type Product = {
   id: number;
@@ -13,7 +13,6 @@ type Product = {
   category_name: string;
   brand_name: string;
   stock_quantity: number;
-  is_active: boolean;
 };
 
 export default function ProductosPage() {
@@ -42,12 +41,8 @@ export default function ProductosPage() {
     if (!form.name) return;
     try {
       await postJson("/products", {
-        name: form.name,
-        sku: form.sku,
-        price: Number(form.price) || 0,
-        unit: form.unit,
-        category_id: form.category_id || null,
-        brand_id: form.brand_id || null,
+        name: form.name, sku: form.sku, price: Number(form.price) || 0,
+        unit: form.unit, category_id: form.category_id || null, brand_id: form.brand_id || null,
       });
       setForm({ name: "", sku: "", price: "", unit: "unidad", category_id: "", brand_id: "" });
       setShowForm(false);
@@ -59,51 +54,42 @@ export default function ProductosPage() {
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
         <PageTitle>📦 Productos</PageTitle>
-        <Button onClick={() => setShowForm(!showForm)}>{showForm ? "Cerrar" : "+ Nuevo Producto"}</Button>
+        <IconButton variant="primary" title="Nuevo producto" onClick={() => setShowForm(!showForm)}>+</IconButton>
       </div>
 
       {showForm && (
         <Card style={{ marginBottom: "20px" }}>
-          <CardHeader title="Nuevo Producto" />
+          <CardHeader title="+ Nuevo producto" />
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
             <Input label="Nombre" value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
             <Input label="SKU" value={form.sku} onChange={(v) => setForm({ ...form, sku: v })} />
             <Input label="Precio" value={form.price} onChange={(v) => setForm({ ...form, price: v })} type="number" />
             <Input label="Unidad" value={form.unit} onChange={(v) => setForm({ ...form, unit: v })} />
-            <Select
-              label="Categoría"
-              value={form.category_id}
-              onChange={(v) => setForm({ ...form, category_id: v })}
-              options={[{value:"",label:"Sin categoría"}, ...categories.map(c=>({value:String(c.id),label:c.name}))]}
-            />
-            <Select
-              label="Marca"
-              value={form.brand_id}
-              onChange={(v) => setForm({ ...form, brand_id: v })}
-              options={[{value:"",label:"Sin marca"}, ...brands.map(b=>({value:String(b.id),label:b.name}))]}
-            />
+            <Select label="Categoría" value={form.category_id} onChange={(v) => setForm({ ...form, category_id: v })}
+              options={[{value:"",label:"Sin categoría"}, ...categories.map(c=>({value:String(c.id),label:c.name}))]} />
+            <Select label="Marca" value={form.brand_id} onChange={(v) => setForm({ ...form, brand_id: v })}
+              options={[{value:"",label:"Sin marca"}, ...brands.map(b=>({value:String(b.id),label:b.name}))]} />
           </div>
-          <div style={{ marginTop: "12px" }}>
-            <Button onClick={handleAdd}>Agregar</Button>
+          <div style={{ marginTop: "12px", display: "flex", gap: "8px" }}>
+            <IconButton variant="primary" onClick={handleAdd}>✓</IconButton>
+            <IconButton variant="secondary" onClick={() => setShowForm(false)}>✕</IconButton>
           </div>
         </Card>
       )}
 
       {loading ? <Loading /> : products.length === 0 ? (
-        <Empty message="No hay productos. Agregá el primero." />
+        <Empty message="Sin productos" />
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "12px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "12px" }}>
           {products.map((p) => (
             <Card key={p.id}>
               <div style={{ fontWeight: 700, fontSize: "14px", marginBottom: "4px" }}>{p.name}</div>
-              {p.sku && <div style={{ fontSize: "11px", color: "#aaa" }}>SKU: {p.sku}</div>}
+              {p.sku && <div style={{ fontSize: "11px", color: "#aaa" }}>SKU {p.sku}</div>}
               <div style={{ fontSize: "18px", fontWeight: 700, color: "#6c63ff", marginTop: "6px" }}>
                 ${Number(p.price).toLocaleString("es-AR")}
               </div>
-              <div style={{ fontSize: "12px", color: "#888", marginTop: "2px" }}>
-                Stock: {p.stock_quantity} · {p.unit}
-              </div>
-              {p.category_name && <Badge>{p.category_name}</Badge>}
+              <div style={{ fontSize: "12px", color: "#888", marginTop: "2px" }}>📦 {p.stock_quantity} {p.unit}</div>
+              {p.category_name && <Badge style={{ marginTop: "6px" }}>{p.category_name}</Badge>}
             </Card>
           ))}
         </div>

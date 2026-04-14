@@ -30,15 +30,62 @@ export function CardHeader({ title, action }: { title: string; action?: React.Re
         marginBottom: "16px",
       }}
     >
-      <h2 style={{ fontSize: "16px", fontWeight: 700, margin: 0 }}>{title}</h2>
+      <h2 style={{ fontSize: "16px", fontWeight: 700, margin: 0, color: "#333" }}>{title}</h2>
       {action}
     </div>
   );
 }
 
-// ─── Button ────────────────────────────────────────────────────
-type ButtonVariant = "primary" | "secondary" | "danger";
+// ─── IconButton ──────────────────────────────────────────────────
+type IconButtonVariant = "primary" | "secondary" | "danger" | "ghost";
 
+export function IconButton({
+  children,
+  onClick,
+  variant = "secondary",
+  title,
+  disabled,
+  style,
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  variant?: IconButtonVariant;
+  title?: string;
+  disabled?: boolean;
+  style?: React.CSSProperties;
+}) {
+  const styles: Record<IconButtonVariant, React.CSSProperties> = {
+    primary: { background: "#6c63ff", color: "#fff", border: "none" },
+    secondary: { background: "#f0f0f0", color: "#333", border: "none" },
+    danger: { background: "#fee", color: "#e74c3c", border: "none" },
+    ghost: { background: "transparent", color: "#888", border: "1px solid #eee" },
+  };
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      style={{
+        width: "34px",
+        height: "34px",
+        borderRadius: "8px",
+        fontSize: "16px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.4 : 1,
+        ...styles[variant],
+        ...style,
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+// ─── Button ────────────────────────────────────────────────────
 export function Button({
   children,
   onClick,
@@ -48,7 +95,7 @@ export function Button({
 }: {
   children: React.ReactNode;
   onClick?: () => void;
-  variant?: ButtonVariant;
+  variant?: "primary" | "secondary" | "danger";
   disabled?: boolean;
   style?: React.CSSProperties;
 }) {
@@ -99,7 +146,7 @@ export function Input({
   return (
     <div style={{ marginBottom: "12px" }}>
       {label && (
-        <label style={{ fontSize: "13px", fontWeight: 600, display: "block", marginBottom: "4px" }}>
+        <label style={{ fontSize: "13px", fontWeight: 600, display: "block", marginBottom: "4px", color: "#555" }}>
           {label}
         </label>
       )}
@@ -139,7 +186,7 @@ export function Select({
   return (
     <div style={{ marginBottom: "12px" }}>
       {label && (
-        <label style={{ fontSize: "13px", fontWeight: 600, display: "block", marginBottom: "4px" }}>
+        <label style={{ fontSize: "13px", fontWeight: 600, display: "block", marginBottom: "4px", color: "#555" }}>
           {label}
         </label>
       )}
@@ -199,25 +246,6 @@ export function PageTitle({ title }: { title: string }) {
     >
       {title}
     </h1>
-  );
-}
-
-// ─── Stat Card ─────────────────────────────────────────────────
-export function StatCard({ label, value, icon }: { label: string; value: string | number; icon: string }) {
-  return (
-    <div
-      style={{
-        background: "#fff",
-        borderRadius: "12px",
-        padding: "16px",
-        textAlign: "center",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
-      }}
-    >
-      <div style={{ fontSize: "24px", marginBottom: "4px" }}>{icon}</div>
-      <div style={{ fontSize: "22px", fontWeight: 700, color: "#1a1a2e" }}>{value}</div>
-      <div style={{ fontSize: "12px", color: "#888", marginTop: "2px" }}>{label}</div>
-    </div>
   );
 }
 

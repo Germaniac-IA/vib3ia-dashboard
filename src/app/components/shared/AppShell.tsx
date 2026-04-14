@@ -51,30 +51,23 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
           <div style={{ flex: 1 }} />
 
-          {/* User */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              fontSize: "13px",
-              color: "#666",
-            }}
-          >
-            <span>👤 admin</span>
+          {/* User + Logout */}
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <button
               onClick={handleLogout}
+              title="Salir"
               style={{
                 background: "none",
-                border: "1px solid #ddd",
-                borderRadius: "6px",
-                padding: "4px 10px",
-                fontSize: "12px",
+                border: "1px solid #eee",
+                borderRadius: "8px",
+                padding: "6px 10px",
+                fontSize: "16px",
                 cursor: "pointer",
-                color: "#666",
+                display: "flex",
+                alignItems: "center",
               }}
             >
-              Salir
+              🔓
             </button>
           </div>
         </header>

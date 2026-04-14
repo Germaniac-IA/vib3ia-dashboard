@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { fetchJson, putJson } from "../../lib";
-import { Card, Button, PageTitle, Loading, Empty, Badge } from "../../components/shared/UI";
+import { Card, PageTitle, Loading, Empty, Badge } from "../../components/shared/UI";
 
 type Order = {
   id: number;
@@ -21,6 +21,13 @@ const STATUS_COLORS: Record<string, string> = {
   preparing: "#9b59b6",
   delivered: "#27ae60",
   cancelled: "#e74c3c",
+};
+const STATUS_LABELS: Record<string, string> = {
+  pending: "⏳",
+  confirmed: "✅",
+  preparing: "🔧",
+  delivered: "📦",
+  cancelled: "❌",
 };
 
 export default function PedidosPage() {
@@ -46,7 +53,7 @@ export default function PedidosPage() {
     <div>
       <PageTitle>🧾 Pedidos</PageTitle>
       {loading ? <Loading /> : orders.length === 0 ? (
-        <Empty message="No hay pedidos" />
+        <Empty message="Sin pedidos" />
       ) : (
         <div style={{ display: "grid", gap: "10px" }}>
           {orders.map((o) => (
@@ -57,23 +64,25 @@ export default function PedidosPage() {
                   <div style={{ fontSize: "12px", color: "#888", marginTop: "2px" }}>
                     {o.contact_name || "Sin cliente"} · {new Date(o.created_at).toLocaleDateString("es-AR")}
                   </div>
-                  <div style={{ marginTop: "6px" }}>
-                    <Badge color={STATUS_COLORS[o.status] || "#888"}>{o.status}</Badge>
-                    <span style={{ fontSize: "13px", marginLeft: "8px", fontWeight: 600 }}>
+                  <div style={{ marginTop: "6px", display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span style={{ fontSize: "18px", fontWeight: 700, color: "#1a1a2e" }}>
                       ${Number(o.total).toLocaleString("es-AR")}
                     </span>
+                    <Badge color={STATUS_COLORS[o.status] || "#888"}>
+                      {STATUS_LABELS[o.status]} {o.status}
+                    </Badge>
                   </div>
                 </div>
                 <select
                   value={o.status}
                   onChange={(e) => updateStatus(o.id, e.target.value)}
-                  style={{ padding: "6px 10px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }}
+                  style={{ padding: "6px 10px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px", background: "#fff" }}
                 >
-                  <option value="pending">Pendiente</option>
-                  <option value="confirmed">Confirmado</option>
-                  <option value="preparing">Preparando</option>
-                  <option value="delivered">Entregado</option>
-                  <option value="cancelled">Cancelado</option>
+                  <option value="pending">⏳ Pendiente</option>
+                  <option value="confirmed">✅ Confirmado</option>
+                  <option value="preparing">🔧 Preparando</option>
+                  <option value="delivered">📦 Entregado</option>
+                  <option value="cancelled">❌ Cancelado</option>
                 </select>
               </div>
             </Card>

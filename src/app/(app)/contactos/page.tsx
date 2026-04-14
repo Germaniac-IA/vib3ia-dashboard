@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { fetchJson, postJson } from "../../lib";
-import { Card, Button, Input, PageTitle, Loading, Empty } from "../../components/shared/UI";
+import { Card, IconButton, Input, PageTitle, Loading, Empty } from "../../components/shared/UI";
 
 type Contact = {
   id: number;
@@ -33,8 +33,7 @@ export default function ContactosPage() {
       await postJson("/contacts", form);
       setForm({ name: "", phone: "", email: "", address: "", location: "", notes: "" });
       setShowForm(false);
-      const updated = await fetchJson<Contact[]>("/contacts");
-      setContacts(updated);
+      fetchJson<Contact[]>("/contacts").then(setContacts);
     } catch (e) { console.error(e); }
   }
 
@@ -42,7 +41,7 @@ export default function ContactosPage() {
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
         <PageTitle>👥 Contactos</PageTitle>
-        <Button onClick={() => setShowForm(!showForm)}>{showForm ? "Cerrar" : "+ Nuevo Contacto"}</Button>
+        <IconButton variant="primary" title="Nuevo contacto" onClick={() => setShowForm(!showForm)}>+</IconButton>
       </div>
 
       {showForm && (
@@ -55,24 +54,28 @@ export default function ContactosPage() {
             <Input label="Localidad" value={form.location} onChange={(v) => setForm({ ...form, location: v })} />
             <Input label="Notas" value={form.notes} onChange={(v) => setForm({ ...form, notes: v })} />
           </div>
-          <div style={{ marginTop: "12px" }}>
-            <Button onClick={handleAdd}>Agregar</Button>
+          <div style={{ marginTop: "12px", display: "flex", gap: "8px" }}>
+            <IconButton variant="primary" onClick={handleAdd}>✓</IconButton>
+            <IconButton variant="secondary" onClick={() => setShowForm(false)}>✕</IconButton>
           </div>
         </Card>
       )}
 
       {loading ? <Loading /> : contacts.length === 0 ? (
-        <Empty message="No hay contactos" />
+        <Empty message="Sin contactos" />
       ) : (
         <div style={{ display: "grid", gap: "10px" }}>
           {contacts.map((c) => (
             <Card key={c.id}>
-              <div style={{ fontWeight: 700, fontSize: "15px" }}>{c.name || "Sin nombre"}</div>
-              <div style={{ fontSize: "13px", color: "#666", marginTop: "2px" }}>
-                📞 {c.phone || "Sin teléfono"} · 📍 {c.location || "Sin ubicación"}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: "15px" }}>{c.name || "Sin nombre"}</div>
+                  <div style={{ fontSize: "13px", color: "#666", marginTop: "2px" }}>
+                    📞 {c.phone || "—"} · 📍 {c.location || "—"}
+                  </div>
+                  {c.email && <div style={{ fontSize: "12px", color: "#888", marginTop: "2px" }}>✉️ {c.email}</div>}
+                </div>
               </div>
-              {c.email && <div style={{ fontSize: "13px", color: "#666" }}>✉️ {c.email}</div>}
-              {c.notes && <div style={{ fontSize: "12px", color: "#aaa", marginTop: "4px" }}>{c.notes}</div>}
             </Card>
           ))}
         </div>
