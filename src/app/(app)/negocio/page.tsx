@@ -196,12 +196,12 @@ export default function NegocioPage() {
         {editingBiz ? (
           <div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-              <Input label="Slogan" value={formBiz.slogan} onChange={(v) => setFormBiz({ ...formBiz, slogan: v })} />
-              <Input label="Logo (URL)" value={formBiz.logo_url} onChange={(v) => setFormBiz({ ...formBiz, logo_url: v })} />
-              <Input label="Direccion" value={formBiz.address} onChange={(v) => setFormBiz({ ...formBiz, address: v })} />
-              <Input label="Ciudad" value={formBiz.city} onChange={(v) => setFormBiz({ ...formBiz, city: v })} />
-              <Input label="Telefono" value={formBiz.phone} onChange={(v) => setFormBiz({ ...formBiz, phone: v })} />
-              <Input label="Email" value={formBiz.email} onChange={(v) => setFormBiz({ ...formBiz, email: v })} />
+              <Input label="Slogan" value={formBiz.slogan} onChange={(v) => setFormBiz({ ...formBiz, slogan: v })} placeholder="Tu eslogan" />
+              <Input label="Logo (URL)" value={formBiz.logo_url} onChange={(v) => setFormBiz({ ...formBiz, logo_url: v })} placeholder="https://..." />
+              <Input label="Direccion" value={formBiz.address} onChange={(v) => setFormBiz({ ...formBiz, address: v })} placeholder="Av. Libertador 1234" />
+              <Input label="Ciudad" value={formBiz.city} onChange={(v) => setFormBiz({ ...formBiz, city: v })} placeholder="San Juan" />
+              <Input label="Telefono" value={formBiz.phone} onChange={(v) => setFormBiz({ ...formBiz, phone: v })} placeholder="+54 264 1234567" />
+              <Input label="Email" value={formBiz.email} onChange={(v) => setFormBiz({ ...formBiz, email: v })} placeholder="info@minegocio.com" />
             </div>
 
             {/* Horarios por dia */}
@@ -230,10 +230,10 @@ export default function NegocioPage() {
             <div style={{ marginTop: "16px", paddingTop: "16px", borderTop: "1px solid #f0" }}>
               <div style={{ fontSize: "12px", fontWeight: 600, color: "#888", marginBottom: "10px" }}>Redes y web</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                <Input label="Web" value={formBiz.web_url} onChange={(v) => setFormBiz({ ...formBiz, web_url: v })} />
-                <Input label="Instagram" value={formBiz.instagram_url} onChange={(v) => setFormBiz({ ...formBiz, instagram_url: v })} />
-                <Input label="Facebook" value={formBiz.facebook_url} onChange={(v) => setFormBiz({ ...formBiz, facebook_url: v })} />
-                <Input label="TikTok" value={formBiz.tiktok_url} onChange={(v) => setFormBiz({ ...formBiz, tiktok_url: v })} />
+                <Input label="Web" value={formBiz.web_url} onChange={(v) => setFormBiz({ ...formBiz, web_url: v })} placeholder="https://..." />
+                <Input label="Instagram" value={formBiz.instagram_url} onChange={(v) => setFormBiz({ ...formBiz, instagram_url: v })} placeholder="@tuinstagram" />
+                <Input label="Facebook" value={formBiz.facebook_url} onChange={(v) => setFormBiz({ ...formBiz, facebook_url: v })} placeholder="@tufacebook" />
+                <Input label="TikTok" value={formBiz.tiktok_url} onChange={(v) => setFormBiz({ ...formBiz, tiktok_url: v })} placeholder="@tutiktok" />
               </div>
             </div>
 
