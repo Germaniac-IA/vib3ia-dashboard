@@ -37,6 +37,7 @@ export default function ProductosPage() {
     stock_quantity: "", min_stock: "", requires_stock: false,
     is_premium: false, premium_level: 5, cost_price: "", uses_inputs: false,
     image_url: "",
+    _pendingImage: "" as string | undefined,
   });
   const [selectedInput, setSelectedInput] = useState("");
   const [inputQty, setInputQty] = useState("1");
@@ -71,7 +72,7 @@ export default function ProductosPage() {
 
   function openNew() {
     setEditing(null);
-    setForm({ name: "", sku: "", sku_externo: "", description: "", price: "", unit: "unidad", category_id: "", brand_id: "", stock_quantity: "", min_stock: "", requires_stock: false, is_premium: false, premium_level: 5, cost_price: "", uses_inputs: false, image_url: "" });
+    setForm({ name: "", sku: "", sku_externo: "", description: "", price: "", unit: "unidad", category_id: "", brand_id: "", stock_quantity: "", min_stock: "", requires_stock: false, is_premium: false, premium_level: 5, cost_price: "", uses_inputs: false, image_url: "", _pendingImage: "" });
     setComponents([]);
     setSelectedInput("");
     setInputQty("1");
@@ -88,6 +89,7 @@ export default function ProductosPage() {
       is_premium: p.is_premium || false, premium_level: p.premium_level || 5,
       cost_price: String(p.cost_price || ""), uses_inputs: false,
       image_url: p.image_url || "",
+      _pendingImage: "",
     });
     setSelectedInput("");
     setInputQty("1");
@@ -128,8 +130,22 @@ export default function ProductosPage() {
         cost_price: form.uses_inputs ? 0 : (Number(form.cost_price) || 0),
         image_url: form.image_url || null,
       };
-      if (editing) await putJson(`/products/${editing.id}`, payload);
-      else await postJson("/products", payload);
+      let savedId = editing ? editing.id : null;
+      if (editing) {
+        await putJson(`/products/${editing.id}`, payload);
+      } else {
+        const created = await postJson<{id:number}>(`/products`, payload);
+        savedId = created.id;
+      }
+      // Upload image if pending
+      if ((form as any)._pendingImage && savedId) {
+        const api = (window as any).__API_URL__ || 'http://149.50.148.131:4000/api';
+        await fetch(`${api}/products/${savedId}/image`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+          body: JSON.stringify({ file: (form as any)._pendingImage }),
+        });
+      }
       setShowForm(false);
       load();
     } catch (e) { console.error(e); }
@@ -263,7 +279,28 @@ export default function ProductosPage() {
             <Input label="Unidad" value={form.unit} onChange={(v) => setForm({ ...form, unit: v })} placeholder="unidad, kilo, litro..." />
             <Input label="Descripcion" value={form.description} onChange={(v) => setForm({ ...form, description: v })} placeholder="Descripcion del producto" />
 
-            <Input label="URL de imagen" value={form.image_url} onChange={(v) => setForm({ ...form, image_url: v })} placeholder="https://..." />
+            <div style={{ marginBottom: "12px" }}>
+              <label style={{ fontSize: "12px", fontWeight: 600, display: "block", marginBottom: "4px", color: "#555" }}>Imagen del producto</label>
+              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                <input type="file" accept="image/*" id="img-upload" style={{ display: "none" }}
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = () => setForm(f => ({ ...f, _pendingImage: reader.result as string }));
+                    reader.readAsDataURL(file);
+                  }} />
+                <label htmlFor="img-upload" style={{ padding: "6px 12px", background: "#6c63ff22", color: "#6c63ff", borderRadius: "8px", fontSize: "13px", cursor: "pointer", border: "1px solid #6c63ff40" }}>
+                  📁 Elegir imagen
+                </label>
+                {(form.image_url || (form as any)._pendingImage) && <span style={{ fontSize: "11px", color: "#27ae60" }}>✓ Imagen lista</span>}
+              </div>
+              {(form.image_url || (form as any)._pendingImage) && (
+                <div style={{ marginTop: "8px", width: "80px", height: "80px", borderRadius: "8px", overflow: "hidden", border: "1px solid #eee" }}>
+                  <img src={(form as any)._pendingImage || form.image_url} alt="preview" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                </div>
+              )}
+            </div>
 
             {form.category_id && !form.sku && (() => {
               const cat = categoriesFull.find(c => String(c.id) === form.category_id);
