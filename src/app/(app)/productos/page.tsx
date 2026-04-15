@@ -137,7 +137,7 @@ export default function ProductosPage() {
         const created = await postJson<{id:number}>(`/products`, payload);
         savedId = created.id;
       }
-      // Upload image if pending
+      // Upload image if pending file
       if ((form as any)._pendingImage && savedId) {
         const api = (window as any).__API_URL__ || 'http://149.50.148.131:4000/api';
         await fetch(`${api}/products/${savedId}/image`, {
@@ -145,6 +145,9 @@ export default function ProductosPage() {
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
           body: JSON.stringify({ file: (form as any)._pendingImage }),
         });
+      } else if (form.image_url && savedId) {
+        // URL directo: guardar en DB sin subir archivo
+        await putJson(`/products/${savedId}`, { image_url: form.image_url });
       }
       setShowForm(false);
       load();
@@ -281,19 +284,26 @@ export default function ProductosPage() {
 
             <div style={{ marginBottom: "12px" }}>
               <label style={{ fontSize: "12px", fontWeight: 600, display: "block", marginBottom: "4px", color: "#555" }}>Imagen del producto</label>
-              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+              <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
                 <input type="file" accept="image/*" id="img-upload" style={{ display: "none" }}
                   onChange={async (e) => {
                     const file = e.target.files?.[0];
                     if (!file) return;
                     const reader = new FileReader();
-                    reader.onload = () => setForm(f => ({ ...f, _pendingImage: reader.result as string }));
+                    reader.onload = () => setForm(f => ({ ...f, _pendingImage: reader.result as string, image_url: '' }));
                     reader.readAsDataURL(file);
                   }} />
                 <label htmlFor="img-upload" style={{ padding: "6px 12px", background: "#6c63ff22", color: "#6c63ff", borderRadius: "8px", fontSize: "13px", cursor: "pointer", border: "1px solid #6c63ff40" }}>
-                  📁 Elegir imagen
+                  📁 Subir
                 </label>
-                {(form.image_url || (form as any)._pendingImage) && <span style={{ fontSize: "11px", color: "#27ae60" }}>✓ Imagen lista</span>}
+                <span style={{ color: "#aaa", fontSize: "12px" }}>o</span>
+                <input
+                  value={form.image_url}
+                  onChange={(e) => setForm(f => ({ ...f, image_url: e.target.value, _pendingImage: '' }))}
+                  placeholder="Pega URL de imagen..."
+                  style={{ flex: 1, minWidth: "180px", padding: "6px 10px", border: "1px solid #ddd", borderRadius: "8px", fontSize: "13px" }}
+                />
+                {(form.image_url || (form as any)._pendingImage) && <span style={{ fontSize: "11px", color: "#27ae60" }}>✓</span>}
               </div>
               {(form.image_url || (form as any)._pendingImage) && (
                 <div style={{ marginTop: "8px", width: "80px", height: "80px", borderRadius: "8px", overflow: "hidden", border: "1px solid #eee" }}>
