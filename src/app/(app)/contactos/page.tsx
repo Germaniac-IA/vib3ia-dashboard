@@ -222,7 +222,8 @@ export default function ContactosPage() {
             <IconButton variant="primary" onClick={handleSave}>✓</IconButton>
             <IconButton variant="secondary" onClick={() => setShowForm(false)}>✕</IconButton>
           </div>
-        </Card>
+          </div>
+        </div>
       )}
 
       {loading ? <Loading /> : filteredContacts.length === 0 ? (
