@@ -22,6 +22,7 @@ type Product = {
 export default function ProductosPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
+  const [showInactive, setShowInactive] = useState(false);
   const [categories, setCategories] = useState<{id:number;name:string}[]>([]);
   const [brands, setBrands] = useState<{id:number;name:string}[]>([]);
   const [categoriesFull, setCategoriesFull] = useState<Category[]>([]);
@@ -144,13 +145,13 @@ export default function ProductosPage() {
 
   const computedCost = components.reduce((sum, c) => sum + (Number(c.quantity) * Number(c.default_cost)), 0);
 
-  const filtered = search
+  const filtered = (search
     ? products.filter(p =>
         p.name.toLowerCase().includes(search.toLowerCase()) ||
         (p.sku || "").toLowerCase().includes(search.toLowerCase()) ||
         (p.sku_externo || "").toLowerCase().includes(search.toLowerCase())
       )
-    : products;
+    : products).filter(p => showInactive || p.is_active !== false);
 
   const grouped: Record<string, Product[]> = {};
   filtered.forEach(p => {
@@ -173,7 +174,11 @@ export default function ProductosPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nombre, SKU, SKU externo..."
           style={{ flex: 1, maxWidth: "400px", padding: "8px 12px", border: "1px solid #ddd", borderRadius: "8px", fontSize: "13px" }} />
-        <span style={{ color: "#888", fontSize: "13px", marginLeft: "12px" }}>{filtered.length} producto{filtered.length !== 1 ? "s" : ""}</span>
+        <span style={{ color: "#888", fontSize: "13px", marginLeft: "12px" }}>{filtered.length}/{products.length}</span>
+        <label style={{ fontSize: "12px", color: "#888", display: "flex", alignItems: "center", gap: "4px", marginLeft: "12px", cursor: "pointer" }}>
+          <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />
+          Ver todos
+        </label>
         <IconButton variant="primary" title="Nuevo producto" onClick={openNew}>+</IconButton>
       </div>
 
