@@ -277,24 +277,32 @@ export default function ProductosPage() {
         ))
       ) : (
         <div style={{ border: "1px solid #eee", borderRadius: "12px", overflow: "hidden" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 100px 100px", gap: "0", background: "#f8f8f8", padding: "8px 12px", fontSize: "11px", fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "1px", borderBottom: "1px solid #eee" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 100px 100px 90px", gap: "0", background: "#f8f8f8", padding: "8px 12px", fontSize: "11px", fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "1px", borderBottom: "1px solid #eee" }}>
             <div>Producto</div>
             <div>SKU</div>
             <div>Categoria</div>
             <div>Marca</div>
             <div>Precio</div>
             <div>Stock</div>
+            <div>Acciones</div>
           </div>
           {filtered.map(p => (
-            <div key={p.id} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 100px 100px", gap: "0", padding: "10px 12px", fontSize: "13px", alignItems: "center", borderBottom: "1px solid #f5f5f5", background: p.is_active === false ? "#fafafa" : "#fff", opacity: p.is_active === false ? 0.55 : 1, cursor: "pointer" }}
-              onClick={() => openEdit(p)}>
-              <div style={{ fontWeight: 700, color: p.is_active === false ? "#aaa" : undefined, textDecoration: p.is_active === false ? "line-through" : undefined }}>{p.name}</div>
+            <div key={p.id} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 100px 100px 90px", gap: "0", padding: "8px 12px", fontSize: "13px", alignItems: "center", borderBottom: "1px solid #f5f5f5", background: p.is_active === false ? "#fafafa" : "#fff", opacity: p.is_active === false ? 0.55 : 1 }}>
+              <div style={{ fontWeight: 700, color: p.is_active === false ? "#aaa" : undefined, textDecoration: p.is_active === false ? "line-through" : undefined, cursor: "pointer" }} onClick={() => openEdit(p)}>{p.name}</div>
               <div style={{ fontSize: "12px", color: "#aaa" }}>{p.sku || "—"}</div>
               <div style={{ fontSize: "12px", color: "#888" }}>{p.category_name || "Sin"}</div>
               <div style={{ fontSize: "12px", color: "#888" }}>{p.brand_name || "—"}</div>
               <div style={{ fontWeight: 700, color: "#6c63ff" }}>${Number(p.price).toLocaleString("es-AR")}</div>
               <div style={{ fontSize: "12px", color: p.requires_stock && (p.stock_quantity || 0) <= (p.min_stock || 0) ? "#e74c3c" : "#888" }}>
                 {p.requires_stock ? `${p.stock_quantity || 0} ${p.unit}` : "—"}
+              </div>
+              <div style={{ display: "flex", gap: "2px", justifyContent: "flex-end" }}>
+                <IconButton variant={p.is_active === false ? "primary" : "ghost"} title={p.is_active === false ? "Activar" : "Discontinuar"}
+                  onClick={() => toggleActive(p)}>
+                  {p.is_active === false ? "✓" : "⏸"}
+                </IconButton>
+                <IconButton variant="ghost" title="Editar" onClick={() => openEdit(p)}>✏️</IconButton>
+                <IconButton variant="danger" title="Eliminar" onClick={() => handleDelete(p.id)}>🗑️</IconButton>
               </div>
             </div>
           ))}
