@@ -6,8 +6,7 @@ import { Card, IconButton, Input, Select, PageTitle, Loading } from "../../compo
 
 type InputItem = { id: number; name: string; unit: string; default_cost: number };
 type ProductComponent = { id: number; input_item_id: number; input_item_name: string; input_unit: string; quantity: number; default_cost: number };
-type Category = { id: number; name: string; auto_generate_sku: boolean; sku_counter: number; };
-type Brand = { id: number; name: string; is_imported: boolean; premium_level: number };
+type Category = { id: number; name: string; auto_generate_sku: boolean; sku_counter: number };
 type Product = {
   id: number; name: string; sku: string; sku_externo: string; description: string;
   price: number; cost_price: number; computed_cost: number; unit: string;
@@ -30,6 +29,7 @@ export default function ProductosPage() {
   const [components, setComponents] = useState<ProductComponent[]>([]);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
+  const [showAll, setShowAll] = useState(false);
   const [form, setForm] = useState({
     name: "", sku: "", sku_externo: "", description: "",
     price: "", unit: "unidad", category_id: "", brand_id: "",
@@ -143,13 +143,13 @@ export default function ProductosPage() {
 
   const computedCost = components.reduce((sum, c) => sum + (Number(c.quantity) * Number(c.default_cost)), 0);
 
-  const filtered = search
+  const filtered = ((search
     ? products.filter(p =>
         p.name.toLowerCase().includes(search.toLowerCase()) ||
         (p.sku || "").toLowerCase().includes(search.toLowerCase()) ||
         (p.sku_externo || "").toLowerCase().includes(search.toLowerCase())
       )
-    : products;
+    : products)).filter(p => showAll || p.is_active !== false);
 
   const grouped: Record<string, Product[]> = {};
   filtered.forEach(p => {
@@ -158,7 +158,7 @@ export default function ProductosPage() {
     grouped[cat].push(p);
   });
 
-  const discontinuedCount = products.filter(p => p.is_active === false).length;
+  const discCount = products.filter(p => p.is_active === false).length;
 
   if (loading) return <Loading />;
 
@@ -168,31 +168,28 @@ export default function ProductosPage() {
       <div style={{ background: "linear-gradient(135deg, #6c63ff15, #1a1a2e08)", border: "1px solid #6c63ff30", borderRadius: "12px", padding: "14px 18px", marginBottom: "20px", fontSize: "12px", color: "#666", lineHeight: "1.5" }}>
         <strong style={{ color: "#6c63ff" }}>📦 Catalogo de productos</strong><br />
         Carga tus productos, asignales categoria y marca, defini precios y niveles premium.
-        Si un producto se arma con insumos, indicá cuales y el sistema calculara el costo automaticamente.
       </div>
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", flexWrap: "wrap", gap: "8px" }}>
         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nombre, SKU, SKU externo..."
           style={{ flex: 1, maxWidth: "400px", padding: "8px 12px", border: "1px solid #ddd", borderRadius: "8px", fontSize: "13px" }} />
         <span style={{ color: "#888", fontSize: "13px" }}>
-          {filtered.length} producto{filtered.length !== 1 ? "s" : ""}
-          {discontinuedCount > 0 && <span style={{ color: "#e74c3c" }}> ({discontinuedCount} discontinuad{discontinuedCount !== 1 ? "os" : "o"})</span>}
+          {filtered.length}/{products.length}
+          {discCount > 0 && <span style={{ color: "#e74c3c" }}> ({discCount} disc)</span>}
         </span>
+        <label style={{ fontSize: "12px", color: "#888", display: "flex", alignItems: "center", gap: "4px", marginLeft: "8px", cursor: "pointer" }}>
+          <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
+          Ver todos
+        </label>
         <IconButton variant="primary" title="Nuevo producto" onClick={openNew}>+</IconButton>
       </div>
 
       {products.length === 0 ? (
-        <Card>
-          <div style={{ textAlign: "center", padding: "40px", color: "#aaa" }}>
-            Sin productos cargados. Haces click en + para agregar el primero.
-          </div>
-        </Card>
+        <Card><div style={{ textAlign: "center", padding: "40px", color: "#aaa" }}>Sin productos cargados.</div></Card>
       ) : (
         Object.entries(grouped).map(([catName, prods]) => (
           <div key={catName} style={{ marginBottom: "24px" }}>
-            <div style={{ fontSize: "12px", fontWeight: 700, color: "#888", marginBottom: "10px", textTransform: "uppercase", letterSpacing: "1px" }}>
-              {catName}
-            </div>
+            <div style={{ fontSize: "12px", fontWeight: 700, color: "#888", marginBottom: "10px", textTransform: "uppercase", letterSpacing: "1px" }}>{catName}</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "12px" }}>
               {prods.map(p => (
                 <Card key={p.id} style={{ opacity: p.is_active === false ? 0.55 : 1, border: p.is_active === false ? "1px dashed #ccc" : undefined }}>
@@ -204,23 +201,15 @@ export default function ProductosPage() {
                     </div>
                     <div style={{ display: "flex", gap: "2px", flexShrink: 0 }}>
                       {p.is_premium && p.premium_level && (
-                        <span style={{ fontSize: "10px", background: "#f39c1215", color: "#f39c12", padding: "2px 6px", borderRadius: "8px", fontWeight: 600 }}>
-                          {p.premium_level}/10
-                        </span>
+                        <span style={{ fontSize: "10px", background: "#f39c1215", color: "#f39c12", padding: "2px 6px", borderRadius: "8px", fontWeight: 600 }}>{p.premium_level}/10</span>
                       )}
                     </div>
                   </div>
-                  {p.is_active === false && (
-                    <div style={{ fontSize: "11px", color: "#e74c3c", fontWeight: 700, marginBottom: "4px" }}>⏸ DISCONTINUADO</div>
-                  )}
+                  {p.is_active === false && <div style={{ fontSize: "11px", color: "#e74c3c", fontWeight: 700, marginBottom: "4px" }}>⏸ DISCONTINUADO</div>}
                   <div style={{ fontSize: "20px", fontWeight: 700, color: p.is_active === false ? "#ccc" : "#6c63ff", marginTop: "8px", cursor: "pointer" }} onClick={() => openEdit(p)}>
                     ${Number(p.price).toLocaleString("es-AR")}
                   </div>
-                  {p.cost_price > 0 && (
-                    <div style={{ fontSize: "11px", color: "#888", marginTop: "2px" }}>
-                      Costo: ${Number(p.cost_price).toLocaleString("es-AR")}
-                    </div>
-                  )}
+                  {p.cost_price > 0 && <div style={{ fontSize: "11px", color: "#888", marginTop: "2px" }}>Costo: ${Number(p.cost_price).toLocaleString("es-AR")}</div>}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "8px" }}>
                     <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
                       {p.brand_name && <span style={{ fontSize: "11px", background: "#eee", padding: "2px 6px", borderRadius: "8px" }}>{p.brand_name}</span>}
@@ -231,9 +220,7 @@ export default function ProductosPage() {
                       )}
                     </div>
                     <div style={{ display: "flex", gap: "2px" }}>
-                      <IconButton
-                        variant={p.is_active === false ? "primary" : "ghost"}
-                        title={p.is_active === false ? "Activar" : "Discontinuar"}
+                      <IconButton variant={p.is_active === false ? "primary" : "ghost"} title={p.is_active === false ? "Activar" : "Discontinuar"}
                         onClick={(e) => { e.stopPropagation(); toggleActive(p); }}>
                         {p.is_active === false ? "✓" : "⏸"}
                       </IconButton>
@@ -251,9 +238,7 @@ export default function ProductosPage() {
       {showForm && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "20px", overflowY: "auto" }} onClick={(e) => { if (e.target === e.currentTarget) setShowForm(false); }}>
           <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "640px", marginTop: "20px" }}>
-            <h3 style={{ fontSize: "17px", fontWeight: 700, marginBottom: "20px" }}>
-              {editing ? "Editar producto" : "Nuevo producto"}
-            </h3>
+            <h3 style={{ fontSize: "17px", fontWeight: 700, marginBottom: "20px" }}>{editing ? "Editar producto" : "Nuevo producto"}</h3>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
               <Input label="Nombre" value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="Nombre del producto" />
@@ -286,9 +271,7 @@ export default function ProductosPage() {
               </label>
               {form.is_premium && (
                 <div style={{ marginTop: "8px" }}>
-                  <label style={{ fontSize: "12px", fontWeight: 600, display: "block", marginBottom: "4px", color: "#555" }}>
-                    Nivel: {form.premium_level}/10
-                  </label>
+                  <label style={{ fontSize: "12px", fontWeight: 600, display: "block", marginBottom: "4px", color: "#555" }}>Nivel: {form.premium_level}/10</label>
                   <input type="range" min="1" max="10" value={form.premium_level}
                     onChange={(e) => setForm({ ...form, premium_level: parseInt(e.target.value) })}
                     style={{ width: "100%", accentColor: "#6c63ff" }} />
@@ -314,7 +297,6 @@ export default function ProductosPage() {
                 <input type="checkbox" checked={form.uses_inputs} onChange={(e) => setForm({ ...form, uses_inputs: e.target.checked })} />
                 Usa insumos (costo calculado)
               </label>
-
               {form.uses_inputs && editing && (
                 <div style={{ marginTop: "10px" }}>
                   {components.length > 0 && (
@@ -327,36 +309,27 @@ export default function ProductosPage() {
                         </div>
                       ))}
                       <div style={{ fontSize: "12px", fontWeight: 700, color: "#6c63ff", marginTop: "4px", borderTop: "1px solid #ddd", paddingTop: "4px" }}>
-                        Costo total insumos: ${computedCost.toLocaleString("es-AR")}
+                        Costo total: ${computedCost.toLocaleString("es-AR")}
                       </div>
                     </div>
                   )}
                   <div style={{ display: "flex", gap: "6px", alignItems: "flex-end" }}>
                     <div style={{ flex: 1 }}>
-                      <label style={{ fontSize: "11px", fontWeight: 600, display: "block", marginBottom: "2px", color: "#555" }}>Insumo</label>
                       <select value={selectedInput} onChange={(e) => setSelectedInput(e.target.value)} style={{ width: "100%", padding: "6px 8px", border: "1px solid #ddd", borderRadius: "8px", fontSize: "12px" }}>
                         <option value="">Seleccionar insumo...</option>
                         {allInputs.map(i => <option key={i.id} value={i.id}>{i.name} (${Number(i.default_cost).toLocaleString("es-AR")}/{i.unit})</option>)}
                       </select>
                     </div>
                     <div style={{ width: "70px" }}>
-                      <label style={{ fontSize: "11px", fontWeight: 600, display: "block", marginBottom: "2px", color: "#555" }}>Cantidad</label>
-                      <input value={inputQty} onChange={(e) => setInputQty(e.target.value)} type="number" min="0" step="0.01" placeholder="1" style={{ width: "100%", padding: "6px 8px", border: "1px solid #ddd", borderRadius: "8px", fontSize: "12px" }} />
+                      <input value={inputQty} onChange={(e) => setInputQty(e.target.value)} type="number" min="0" step="0.01" placeholder="1"
+                        style={{ width: "100%", padding: "6px 8px", border: "1px solid #ddd", borderRadius: "8px", fontSize: "12px" }} />
                     </div>
                     <button onClick={addComponent} style={{ background: "#6c63ff", color: "#fff", border: "none", borderRadius: "8px", padding: "6px 12px", fontSize: "12px", cursor: "pointer" }}>Agregar</button>
                   </div>
-                  {allInputs.length === 0 && (
-                    <div style={{ fontSize: "11px", color: "#e74c3c", marginTop: "4px" }}>
-                      No hay insumos cargados. Andá a Parametros - Insumos para crear el catalogo primero.
-                    </div>
-                  )}
+                  {allInputs.length === 0 && <div style={{ fontSize: "11px", color: "#e74c3c", marginTop: "4px" }}>No hay insumos. Ve a Parametros - Insumos.</div>}
                 </div>
               )}
-              {!form.uses_inputs && (
-                <div style={{ marginTop: "8px", color: "#888", fontSize: "12px" }}>
-                  El costo manual esta junto al precio de venta.
-                </div>
-              )}
+              {!form.uses_inputs && <div style={{ marginTop: "8px", color: "#888", fontSize: "12px" }}>El costo manual esta junto al precio de venta.</div>}
             </div>
 
             <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: "20px" }}>
