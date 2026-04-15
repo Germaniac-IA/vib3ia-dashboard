@@ -15,21 +15,33 @@ function CompactABM({ title, items, onAdd, onEdit, onDelete, renderItem }: {
   renderItem: (item: any) => React.ReactNode;
 }) {
   const [expanded, setExpanded] = useState(true);
+  const [search, setSearch] = useState("");
+  const filtered = items.filter(i => {
+    const s = search.toLowerCase();
+    return JSON.stringify(i).toLowerCase().includes(s);
+  });
   return (
     <Card style={{ marginBottom: "12px" }}>
-      <div style={{ display: "flex", alignItems: "center", padding: "12px 16px", cursor: "pointer" }}
+      <div style={{ display: "flex", alignItems: "center", padding: "10px 16px", cursor: "pointer" }}
            onClick={() => setExpanded(!expanded)}>
         <span style={{ fontSize: "13px", fontWeight: 700, flex: 1 }}>{title}</span>
-        <span style={{ fontSize: "11px", color: "#aaa", marginRight: "8px" }}>{items.length}</span>
-        <span style={{ fontSize: "12px", color: "#888", marginRight: "8px" }}>{expanded ? "▼" : "▶"}</span>
+        <span style={{ fontSize: "11px", color: "#aaa", marginRight: "8px" }}>{filtered.length}{search ? `/${items.length}` : ""}</span>
+        <span style={{ fontSize: "12px", color: "#888", marginRight: "8px" }}>{expanded ? "▲" : "▼"}</span>
         <IconButton variant="primary" title={"Agregar"} onClick={(e) => { e.stopPropagation(); onAdd(); }}>+</IconButton>
       </div>
       {expanded && (
-        <div style={{ borderTop: "1px solid #f0", padding: "8px 16px 12px" }}>
-          {items.length === 0 ? (
-            <div style={{ fontSize: "12px", color: "#ccc", textAlign: "center", padding: "8px" }}>Sin datos</div>
+        <div style={{ borderTop: "1px solid #f0", padding: "0 16px 12px" }}>
+          {items.length > 3 && (
+            <div style={{ padding: "8px 0 4px" }}>
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar..."
+                style={{ width: "100%", padding: "6px 10px", border: "1px solid #ddd", borderRadius: "8px", fontSize: "12px", boxSizing: "border-box" }}
+                onClick={(e) => e.stopPropagation()} />
+            </div>
+          )}
+          {filtered.length === 0 ? (
+            <div style={{ fontSize: "12px", color: "#ccc", textAlign: "center", padding: "8px" }}>{search ? "Sin resultados" : "Sin datos"}</div>
           ) : (
-            items.map(renderItem)
+            filtered.map(renderItem)
           )}
         </div>
       )}
