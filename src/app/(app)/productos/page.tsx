@@ -40,6 +40,7 @@ export default function ProductosPage() {
     is_premium: false, premium_level: 5, cost_price: "", uses_inputs: false,
     image_url: "",
     _pendingImage: "" as string | undefined,
+    _hasComponents: false,
   });
   const [selectedInput, setSelectedInput] = useState("");
   const [inputDisplay, setInputDisplay] = useState("");
@@ -75,7 +76,8 @@ export default function ProductosPage() {
     try {
       const comps = await fetchJson<ProductComponent[]>(`/products/${productId}/components`);
       setComponents(comps);
-    } catch { setComponents([]); }
+      setForm(f => ({ ...f, uses_inputs: comps.length > 0, _hasComponents: comps.length > 0 }));
+    } catch { setComponents([]); setForm(f => ({ ...f, uses_inputs: false, _hasComponents: false })); }
   }
 
   function openNew() {
@@ -100,6 +102,7 @@ export default function ProductosPage() {
       image_url: p.image_url || "",
       commercial_description: p.commercial_description || "",
       _pendingImage: "",
+      _hasComponents: false,
     });
     setSelectedInput("");
     setInputQty("1");
