@@ -44,7 +44,9 @@ export default function ProductosPage() {
   const [inputDisplay, setInputDisplay] = useState("");
   const [inputSearchFocus, setInputSearchFocus] = useState(false);
   const [catSearchFocus, setCatSearchFocus] = useState(false);
+  const [catFilter, setCatFilter] = useState("");
   const [brandSearchFocus, setBrandSearchFocus] = useState(false);
+  const [brandFilter, setBrandFilter] = useState("");
   const [inputQty, setInputQty] = useState("1");
 
   function load() {
@@ -280,20 +282,19 @@ export default function ProductosPage() {
               <div style={{ position: "relative" }}>
                 <label style={{ fontSize: "12px", fontWeight: 600, display: "block", marginBottom: "4px", color: "#555" }}>Categoria</label>
                 <input
-                  value={catSearchFocus ? '' : (categories.find(c => String(c.id) === form.category_id)?.name || '')}
-                  onChange={(e) => { const match = categories.find(c => c.name.toLowerCase().includes(e.target.value.toLowerCase())); setForm(f => ({ ...f, category_id: match ? String(match.id) : f.category_id, sku: "" })); setCatSearchFocus(true); }}
+                  value={catSearchFocus ? catFilter : (categories.find(c => String(c.id) === form.category_id)?.name || '')}
+                  onChange={(e) => { setCatFilter(e.target.value); setCatSearchFocus(true); }}
                   onFocus={() => setCatSearchFocus(true)}
-                  onBlur={() => setTimeout(() => setCatSearchFocus(false), 150)}
-                  placeholder={form.category_id ? (categories.find(c => String(c.id) === form.category_id)?.name || 'Sin categoria') : 'Sin categoria'}
+                  placeholder="Buscar categoria..."
                   style={{ width: "100%", padding: "8px 10px", border: "1px solid #ddd", borderRadius: "8px", fontSize: "13px" }}
                 />
                 {catSearchFocus && (
                   <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#fff", border: "1px solid #ddd", borderRadius: "8px", zIndex: 10, maxHeight: "160px", overflowY: "auto", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
-                    {[{id:null,name:"Sin categoria"}, ...categories].filter(c => !form.category_id || c.name.toLowerCase().includes(form.category_id?.toLowerCase())).length === 0 && (
+                    {[{id:null,name:"Sin categoria"}, ...categories].filter(c => !catFilter || c.name.toLowerCase().includes(catFilter.toLowerCase())).length === 0 && (
                       <div style={{ padding: "8px 12px", color: "#aaa", fontSize: "12px" }}>Sin resultados</div>
                     )}
-                    {[{id:null,name:"Sin categoria"}, ...categories].filter(c => !form.category_id || c.name.toLowerCase().includes(form.category_id?.toLowerCase())).map(c => (
-                      <div key={String(c.id ?? 'null')} onClick={() => { setForm(f => ({ ...f, category_id: String(c.id ?? ''), sku: "" })); setCatSearchFocus(false); }}
+                    {[{id:null,name:"Sin categoria"}, ...categories].filter(c => !catFilter || c.name.toLowerCase().includes(catFilter.toLowerCase())).map(c => (
+                      <div key={String(c.id ?? 'null')} onClick={() => { setForm(f => ({ ...f, category_id: String(c.id ?? ''), sku: "" })); setCatFilter(''); setCatSearchFocus(false); }}
                         style={{ padding: "8px 12px", fontSize: "13px", cursor: "pointer", borderBottom: "1px solid #f0f0f0" }}
                         onMouseEnter={(e) => (e.currentTarget.style.background = "#f5f5ff")}
                         onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
@@ -306,20 +307,19 @@ export default function ProductosPage() {
               <div style={{ position: "relative" }}>
                 <label style={{ fontSize: "12px", fontWeight: 600, display: "block", marginBottom: "4px", color: "#555" }}>Marca</label>
                 <input
-                  value={brandSearchFocus ? '' : (brands.find(b => String(b.id) === form.brand_id)?.name || '')}
-                  onChange={(e) => { const match = brands.find(b => b.name.toLowerCase().includes(e.target.value.toLowerCase())); setForm(f => ({ ...f, brand_id: match ? String(match.id) : f.brand_id })); setBrandSearchFocus(true); }}
+                  value={brandSearchFocus ? brandFilter : (brands.find(b => String(b.id) === form.brand_id)?.name || '')}
+                  onChange={(e) => { setBrandFilter(e.target.value); setBrandSearchFocus(true); }}
                   onFocus={() => setBrandSearchFocus(true)}
-                  onBlur={() => setTimeout(() => setBrandSearchFocus(false), 150)}
-                  placeholder={form.brand_id ? (brands.find(b => String(b.id) === form.brand_id)?.name || 'Sin marca') : 'Sin marca'}
+                  placeholder="Buscar marca..."
                   style={{ width: "100%", padding: "8px 10px", border: "1px solid #ddd", borderRadius: "8px", fontSize: "13px" }}
                 />
                 {brandSearchFocus && (
                   <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#fff", border: "1px solid #ddd", borderRadius: "8px", zIndex: 10, maxHeight: "160px", overflowY: "auto", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
-                    {[{id:null,name:"Sin marca"}, ...brands].filter(b => !form.brand_id || b.name.toLowerCase().includes(form.brand_id?.toLowerCase())).length === 0 && (
+                    {[{id:null,name:"Sin marca"}, ...brands].filter(b => !brandFilter || b.name.toLowerCase().includes(brandFilter.toLowerCase())).length === 0 && (
                       <div style={{ padding: "8px 12px", color: "#aaa", fontSize: "12px" }}>Sin resultados</div>
                     )}
-                    {[{id:null,name:"Sin marca"}, ...brands].filter(b => !form.brand_id || b.name.toLowerCase().includes(form.brand_id?.toLowerCase())).map(b => (
-                      <div key={String(b.id ?? 'null')} onClick={() => { setForm(f => ({ ...f, brand_id: String(b.id ?? '') })); setBrandSearchFocus(false); }}
+                    {[{id:null,name:"Sin marca"}, ...brands].filter(b => !brandFilter || b.name.toLowerCase().includes(brandFilter.toLowerCase())).map(b => (
+                      <div key={String(b.id ?? 'null')} onClick={() => { setForm(f => ({ ...f, brand_id: String(b.id ?? '') })); setBrandFilter(''); setBrandSearchFocus(false); }}
                         style={{ padding: "8px 12px", fontSize: "13px", cursor: "pointer", borderBottom: "1px solid #f0f0f0" }}
                         onMouseEnter={(e) => (e.currentTarget.style.background = "#f5f5ff")}
                         onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
