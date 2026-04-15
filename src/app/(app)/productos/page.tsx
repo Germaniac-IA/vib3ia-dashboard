@@ -15,6 +15,7 @@ type Product = {
   category_id: number; category_name: string;
   brand_id: number; brand_name: string;
   is_active: boolean;
+  image_url: string;
 };
 
 export default function ProductosPage() {
@@ -35,6 +36,7 @@ export default function ProductosPage() {
     price: "", unit: "unidad", category_id: "", brand_id: "",
     stock_quantity: "", min_stock: "", requires_stock: false,
     is_premium: false, premium_level: 5, cost_price: "", uses_inputs: false,
+    image_url: "",
   });
   const [selectedInput, setSelectedInput] = useState("");
   const [inputQty, setInputQty] = useState("1");
@@ -42,7 +44,7 @@ export default function ProductosPage() {
   function load() {
     setLoading(true);
     Promise.all([
-      fetchJson<Product[]>("/products"),
+      fetchJson<Product[]>("/products", true),
       fetchJson<Category[]>("/product-categories"),
       fetchJson<{id:number;name:string}[]>("/product-brands"),
       fetchJson<InputItem[]>("/input-items"),
@@ -69,7 +71,7 @@ export default function ProductosPage() {
 
   function openNew() {
     setEditing(null);
-    setForm({ name: "", sku: "", sku_externo: "", description: "", price: "", unit: "unidad", category_id: "", brand_id: "", stock_quantity: "", min_stock: "", requires_stock: false, is_premium: false, premium_level: 5, cost_price: "", uses_inputs: false });
+    setForm({ name: "", sku: "", sku_externo: "", description: "", price: "", unit: "unidad", category_id: "", brand_id: "", stock_quantity: "", min_stock: "", requires_stock: false, is_premium: false, premium_level: 5, cost_price: "", uses_inputs: false, image_url: "" });
     setComponents([]);
     setSelectedInput("");
     setInputQty("1");
@@ -85,6 +87,7 @@ export default function ProductosPage() {
       requires_stock: p.requires_stock || false,
       is_premium: p.is_premium || false, premium_level: p.premium_level || 5,
       cost_price: String(p.cost_price || ""), uses_inputs: false,
+      image_url: p.image_url || "",
     });
     setSelectedInput("");
     setInputQty("1");
@@ -123,6 +126,7 @@ export default function ProductosPage() {
         requires_stock: form.requires_stock,
         is_premium: form.is_premium, premium_level: form.is_premium ? (Number(form.premium_level) || 5) : null,
         cost_price: form.uses_inputs ? 0 : (Number(form.cost_price) || 0),
+        image_url: form.image_url || null,
       };
       if (editing) await putJson(`/products/${editing.id}`, payload);
       else await postJson("/products", payload);
@@ -193,40 +197,43 @@ export default function ProductosPage() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "12px" }}>
               {prods.map(p => (
                 <Card key={p.id} style={{ opacity: p.is_active === false ? 0.55 : 1, border: p.is_active === false ? "1px dashed #ccc" : undefined }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", cursor: "pointer" }} onClick={() => openEdit(p)}>
+                  <div style={{ display: "flex", gap: "12px", cursor: "pointer" }} onClick={() => openEdit(p)}>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 700, fontSize: "14px", marginBottom: "2px", textDecoration: p.is_active === false ? "line-through" : undefined, color: p.is_active === false ? "#aaa" : undefined }}>{p.name}</div>
                       {p.sku && <div style={{ fontSize: "11px", color: p.is_active === false ? "#ccc" : "#aaa" }}>SKU {p.sku}</div>}
                       {p.sku_externo && <div style={{ fontSize: "11px", color: p.is_active === false ? "#ccc" : "#aaa" }}>Ext: {p.sku_externo}</div>}
+                      {p.is_active === false && <div style={{ fontSize: "11px", color: "#e74c3c", fontWeight: 700, marginBottom: "4px" }}>⏸ DISCONTINUADO</div>}
+                      <div style={{ fontSize: "18px", fontWeight: 700, color: p.is_active === false ? "#ccc" : "#6c63ff", marginTop: "6px" }}>
+                        ${Number(p.price).toLocaleString("es-AR")}
+                      </div>
+                      {p.cost_price > 0 && <div style={{ fontSize: "11px", color: "#888", marginTop: "2px" }}>Costo: ${Number(p.cost_price).toLocaleString("es-AR")}</div>}
+                      <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", marginTop: "8px" }}>
+                        {p.brand_name && <span style={{ fontSize: "11px", background: "#eee", padding: "2px 6px", borderRadius: "8px" }}>{p.brand_name}</span>}
+                        {p.requires_stock && (
+                          <span style={{ fontSize: "11px", background: (p.stock_quantity || 0) <= (p.min_stock || 0) ? "#e74c3c22" : "#27ae6022", color: (p.stock_quantity || 0) <= (p.min_stock || 0) ? "#e74c3c" : "#27ae60", padding: "2px 6px", borderRadius: "8px" }}>
+                            {(p.stock_quantity || 0)} {p.unit}
+                          </span>
+                        )}
+                        {p.is_premium && p.premium_level && (
+                          <span style={{ fontSize: "10px", background: "#f39c1215", color: "#f39c12", padding: "2px 6px", borderRadius: "8px", fontWeight: 600 }}>{p.premium_level}/10</span>
+                        )}
+                      </div>
                     </div>
-                    <div style={{ display: "flex", gap: "2px", flexShrink: 0 }}>
-                      {p.is_premium && p.premium_level && (
-                        <span style={{ fontSize: "10px", background: "#f39c1215", color: "#f39c12", padding: "2px 6px", borderRadius: "8px", fontWeight: 600 }}>{p.premium_level}/10</span>
+                    <div style={{ width: "80px", height: "80px", flexShrink: 0, borderRadius: "8px", overflow: "hidden", border: "1px solid #eee", background: "#f8f8f8", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {p.image_url ? (
+                        <img src={p.image_url} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      ) : (
+                        <div style={{ fontSize: "28px", opacity: 0.3 }}>📷</div>
                       )}
                     </div>
                   </div>
-                  {p.is_active === false && <div style={{ fontSize: "11px", color: "#e74c3c", fontWeight: 700, marginBottom: "4px" }}>⏸ DISCONTINUADO</div>}
-                  <div style={{ fontSize: "20px", fontWeight: 700, color: p.is_active === false ? "#ccc" : "#6c63ff", marginTop: "8px", cursor: "pointer" }} onClick={() => openEdit(p)}>
-                    ${Number(p.price).toLocaleString("es-AR")}
-                  </div>
-                  {p.cost_price > 0 && <div style={{ fontSize: "11px", color: "#888", marginTop: "2px" }}>Costo: ${Number(p.cost_price).toLocaleString("es-AR")}</div>}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "8px" }}>
-                    <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
-                      {p.brand_name && <span style={{ fontSize: "11px", background: "#eee", padding: "2px 6px", borderRadius: "8px" }}>{p.brand_name}</span>}
-                      {p.requires_stock && (
-                        <span style={{ fontSize: "11px", background: (p.stock_quantity || 0) <= (p.min_stock || 0) ? "#e74c3c22" : "#27ae6022", color: (p.stock_quantity || 0) <= (p.min_stock || 0) ? "#e74c3c" : "#27ae60", padding: "2px 6px", borderRadius: "8px" }}>
-                          {(p.stock_quantity || 0)} {p.unit}
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ display: "flex", gap: "2px" }}>
-                      <IconButton variant={p.is_active === false ? "primary" : "ghost"} title={p.is_active === false ? "Activar" : "Discontinuar"}
-                        onClick={(e) => { e.stopPropagation(); toggleActive(p); }}>
-                        {p.is_active === false ? "✓" : "⏸"}
-                      </IconButton>
-                      <IconButton variant="ghost" title="Editar" onClick={(e) => { e.stopPropagation(); openEdit(p); }}>✏️</IconButton>
-                      <IconButton variant="danger" title="Eliminar" onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}>🗑️</IconButton>
-                    </div>
+                  <div style={{ display: "flex", justifyContent: "flex-end", gap: "2px", marginTop: "6px" }}>
+                    <IconButton variant={p.is_active === false ? "primary" : "ghost"} title={p.is_active === false ? "Activar" : "Discontinuar"}
+                      onClick={(e) => { e.stopPropagation(); toggleActive(p); }}>
+                      {p.is_active === false ? "✓" : "⏸"}
+                    </IconButton>
+                    <IconButton variant="ghost" title="Editar" onClick={(e) => { e.stopPropagation(); openEdit(p); }}>✏️</IconButton>
+                    <IconButton variant="danger" title="Eliminar" onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}>🗑️</IconButton>
                   </div>
                 </Card>
               ))}
@@ -255,6 +262,8 @@ export default function ProductosPage() {
             </div>
             <Input label="Unidad" value={form.unit} onChange={(v) => setForm({ ...form, unit: v })} placeholder="unidad, kilo, litro..." />
             <Input label="Descripcion" value={form.description} onChange={(v) => setForm({ ...form, description: v })} placeholder="Descripcion del producto" />
+
+            <Input label="URL de imagen" value={form.image_url} onChange={(v) => setForm({ ...form, image_url: v })} placeholder="https://..." />
 
             {form.category_id && !form.sku && (() => {
               const cat = categoriesFull.find(c => String(c.id) === form.category_id);

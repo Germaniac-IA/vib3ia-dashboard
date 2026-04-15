@@ -7,12 +7,14 @@ function getToken() {
   return localStorage.getItem("token");
 }
 
-export async function fetchJson<T>(path: string): Promise<T> {
+export async function fetchJson<T>(path: string, includeDiscontinued = false): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
+  if (includeDiscontinued) headers["X-Include-Discontinued"] = "1";
 
-  const response = await fetch(`${API}${path}`, {
+  const url = includeDiscontinued && !path.includes('?') ? `${API}${path}?include_discontinued=true` : `${API}${path}`;
+  const response = await fetch(url, {
     cache: "no-store",
     headers,
   });
