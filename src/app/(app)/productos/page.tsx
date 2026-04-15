@@ -288,9 +288,7 @@ export default function ProductosPage() {
           {filtered.map(p => (
             <div key={p.id} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 100px 100px", gap: "0", padding: "10px 12px", fontSize: "13px", alignItems: "center", borderBottom: "1px solid #f5f5f5", background: p.is_active === false ? "#fafafa" : "#fff", opacity: p.is_active === false ? 0.55 : 1, cursor: "pointer" }}
               onClick={() => openEdit(p)}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: 700, color: p.is_active === false ? "#aaa" : undefined, textDecoration: p.is_active === false ? "line-through" : undefined }}>{p.name}</div>
+              <div style={{ fontWeight: 700, color: p.is_active === false ? "#aaa" : undefined, textDecoration: p.is_active === false ? "line-through" : undefined }}>{p.name}</div>
               <div style={{ fontSize: "12px", color: "#aaa" }}>{p.sku || "—"}</div>
               <div style={{ fontSize: "12px", color: "#888" }}>{p.category_name || "Sin"}</div>
               <div style={{ fontSize: "12px", color: "#888" }}>{p.brand_name || "—"}</div>
