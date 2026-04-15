@@ -32,6 +32,7 @@ export default function ProductosPage() {
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
   const [showAll, setShowAll] = useState(false);
+  const [viewMode, setViewMode] = useState<"cards" | "list">("cards");
   const [form, setForm] = useState({
     name: "", sku: "", sku_externo: "", description: "", commercial_description: "",
     price: "", unit: "unidad", category_id: "", brand_id: "",
@@ -211,16 +212,20 @@ export default function ProductosPage() {
           {filtered.length}/{products.length}
           {discCount > 0 && <span style={{ color: "#e74c3c" }}> ({discCount} disc)</span>}
         </span>
-        <label style={{ fontSize: "12px", color: "#888", display: "flex", alignItems: "center", gap: "4px", marginLeft: "8px", cursor: "pointer" }}>
-          <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
-          Ver todos
-        </label>
+        <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+          <IconButton variant={viewMode === "cards" ? "primary" : "ghost"} title="Vista tarjetas" onClick={() => setViewMode("cards")}>▦</IconButton>
+          <IconButton variant={viewMode === "list" ? "primary" : "ghost"} title="Vista lista" onClick={() => setViewMode("list")}>☰</IconButton>
+          <label style={{ fontSize: "12px", color: "#888", display: "flex", alignItems: "center", gap: "4px", marginLeft: "8px", cursor: "pointer" }}>
+            <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
+            Ver todos
+          </label>
+        </div>
         <IconButton variant="primary" title="Nuevo producto" onClick={openNew}>+</IconButton>
       </div>
 
       {products.length === 0 ? (
         <Card><div style={{ textAlign: "center", padding: "40px", color: "#aaa" }}>Sin productos cargados.</div></Card>
-      ) : (
+      ) : viewMode === "cards" ? (
         Object.entries(grouped).map(([catName, prods]) => (
           <div key={catName} style={{ marginBottom: "24px" }}>
             <div style={{ fontSize: "12px", fontWeight: 700, color: "#888", marginBottom: "10px", textTransform: "uppercase", letterSpacing: "1px" }}>{catName}</div>
@@ -270,6 +275,32 @@ export default function ProductosPage() {
             </div>
           </div>
         ))
+      ) : (
+        <div style={{ border: "1px solid #eee", borderRadius: "12px", overflow: "hidden" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 100px 100px", gap: "0", background: "#f8f8f8", padding: "8px 12px", fontSize: "11px", fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "1px", borderBottom: "1px solid #eee" }}>
+            <div>Producto</div>
+            <div>SKU</div>
+            <div>Categoria</div>
+            <div>Marca</div>
+            <div>Precio</div>
+            <div>Stock</div>
+          </div>
+          {filtered.map(p => (
+            <div key={p.id} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 100px 100px", gap: "0", padding: "10px 12px", fontSize: "13px", alignItems: "center", borderBottom: "1px solid #f5f5f5", background: p.is_active === false ? "#fafafa" : "#fff", opacity: p.is_active === false ? 0.55 : 1, cursor: "pointer" }}
+              onClick={() => openEdit(p)}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: 700, color: p.is_active === false ? "#aaa" : undefined, textDecoration: p.is_active === false ? "line-through" : undefined }}>{p.name}</div>
+              <div style={{ fontSize: "12px", color: "#aaa" }}>{p.sku || "—"}</div>
+              <div style={{ fontSize: "12px", color: "#888" }}>{p.category_name || "Sin"}</div>
+              <div style={{ fontSize: "12px", color: "#888" }}>{p.brand_name || "—"}</div>
+              <div style={{ fontWeight: 700, color: "#6c63ff" }}>${Number(p.price).toLocaleString("es-AR")}</div>
+              <div style={{ fontSize: "12px", color: p.requires_stock && (p.stock_quantity || 0) <= (p.min_stock || 0) ? "#e74c3c" : "#888" }}>
+                {p.requires_stock ? `${p.stock_quantity || 0} ${p.unit}` : "—"}
+              </div>
+            </div>
+          ))}
+        </div>
       )}
 
       {showForm && (
