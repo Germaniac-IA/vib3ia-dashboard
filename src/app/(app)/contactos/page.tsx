@@ -157,16 +157,17 @@ export default function ContactosPage() {
       </Card>
 
       {showForm && (
-        <Card style={{ marginBottom: "20px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-            <h3 style={{ fontSize: "16px", fontWeight: 700 }}>{editing ? "Editar contacto" : "Nuevo contacto"}</h3>
-            {editing && (
-              <button onClick={() => { handleDelete(editing.id); setShowForm(false); }}
-                style={{ background: "none", border: "none", color: "#e74c3c", cursor: "pointer", fontSize: "13px" }}>
-                Eliminar
-              </button>
-            )}
-          </div>
+        <div onClick={() => setShowForm(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: isMobile ? "flex-start" : "center", justifyContent: "center", padding: isMobile ? "12px" : "24px", paddingTop: isMobile ? "16px" : "24px", zIndex: 1000, overflowY: "auto" }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "min(1100px, 100%)", maxHeight: isMobile ? "none" : "92vh", overflow: "auto", background: "#fff", borderRadius: isMobile ? "16px" : "18px", padding: isMobile ? "16px" : "22px", boxShadow: "0 24px 70px rgba(0,0,0,0.25)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "center", marginBottom: "16px", gap: "12px", flexDirection: isMobile ? "column" : "row" }}>
+              <h3 style={{ fontSize: "18px", fontWeight: 700, margin: 0 }}>{editing ? "Editar contacto" : "Nuevo contacto"}</h3>
+              {editing && (
+                <button onClick={() => { handleDelete(editing.id); setShowForm(false); }}
+                  style={{ background: "none", border: "none", color: "#e74c3c", cursor: "pointer", fontSize: "13px", fontWeight: 600 }}>
+                  🗑️ Eliminar
+                </button>
+              )}
+            </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
             <Input label="Nombre" value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
             <Input label="Teléfono" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} />
@@ -254,8 +255,8 @@ export default function ContactosPage() {
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: "8px", flexShrink: 0 }}>
-                  <button onClick={(e) => { e.stopPropagation(); openEdit(c); }} style={{ background: "none", border: "1px solid #ddd", borderRadius: "8px", cursor: "pointer", padding: "6px 12px", fontSize: "13px", color: "#6c63ff" }}>Editar</button>
-                  <button onClick={(e) => { e.stopPropagation(); handleDelete(c.id); }} style={{ background: "none", border: "1px solid #e74c3c", borderRadius: "8px", cursor: "pointer", padding: "6px 12px", fontSize: "13px", color: "#e74c3c" }}>🗑️</button>
+                  <button onClick={(e) => { e.stopPropagation(); openEdit(c); }} style={{ background: "none", border: "1px solid #ddd", borderRadius: "8px", cursor: "pointer", padding: "6px 10px", fontSize: "13px" }}>✏️</button>
+                  <button onClick={(e) => { e.stopPropagation(); handleDelete(c.id); }} style={{ background: "none", border: "1px solid #e74c3c", borderRadius: "8px", cursor: "pointer", padding: "6px 10px", fontSize: "13px" }}>🗑️</button>
                 </div>
               </div>
             </Card>
@@ -291,10 +292,9 @@ export default function ContactosPage() {
                   ★ {c.calificacion || 0}
                 </span>
               </div>
-              <div>
-                <button onClick={() => openEdit(c)} style={{ background: "none", border: "none", color: "#6c63ff", cursor: "pointer", fontWeight: 600 }}>
-                  Editar
-                </button>
+              <div style={{ display: "flex", gap: "6px" }}>
+                <button onClick={() => openEdit(c)} style={{ background: "none", border: "1px solid #ddd", borderRadius: "8px", cursor: "pointer", padding: "6px 10px", fontSize: "13px" }}>✏️</button>
+                <button onClick={() => handleDelete(c.id)} style={{ background: "none", border: "1px solid #e74c3c", borderRadius: "8px", cursor: "pointer", padding: "6px 10px", fontSize: "13px" }}>🗑️</button>
               </div>
             </div>
           ))}
