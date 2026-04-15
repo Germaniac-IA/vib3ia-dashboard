@@ -229,9 +229,9 @@ export default function ContactosPage() {
       ) : viewMode === "cards" ? (
         <div style={{ display: "grid", gap: "10px" }}>
           {filteredContacts.map((c) => (
-            <Card key={c.id} onClick={() => openEdit(c)} style={{ cursor: "pointer" }}>
+            <Card key={c.id} style={{ cursor: "pointer" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1 }} onClick={() => openEdit(c)}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
                     <span style={{ fontWeight: 700, fontSize: "15px" }}>{c.name || "Sin nombre"}</span>
                     {c.calificacion > 0 && (
@@ -252,6 +252,10 @@ export default function ContactosPage() {
                     {c.condicion_iva && <span>🏛️ {condicionesIva.find(x => x.value === c.condicion_iva)?.label || c.condicion_iva}</span>}
                     {c.cuit && <span>🔢 {c.cuit}</span>}
                   </div>
+                </div>
+                <div style={{ display: "flex", gap: "8px", flexShrink: 0 }}>
+                  <button onClick={(e) => { e.stopPropagation(); openEdit(c); }} style={{ background: "none", border: "1px solid #ddd", borderRadius: "8px", cursor: "pointer", padding: "6px 12px", fontSize: "13px", color: "#6c63ff" }}>Editar</button>
+                  <button onClick={(e) => { e.stopPropagation(); handleDelete(c.id); }} style={{ background: "none", border: "1px solid #e74c3c", borderRadius: "8px", cursor: "pointer", padding: "6px 12px", fontSize: "13px", color: "#e74c3c" }}>🗑️</button>
                 </div>
               </div>
             </Card>
