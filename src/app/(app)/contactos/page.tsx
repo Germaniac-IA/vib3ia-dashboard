@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { fetchJson, postJson, putJson, deleteJson } from "../../lib";
-import { Card, IconButton, Input, Select, PageTitle, Loading, Empty } from "../../components/shared/UI";
+import { Card, IconButton, Input, PageTitle, Loading, Empty } from "../../components/shared/UI";
 
 type CondicionIva = { value: string; label: string };
 
@@ -24,17 +24,27 @@ type Contact = {
   deleted_at: string | null;
 };
 
+type SortField = "name" | "phone" | "email" | "location" | "condicion_iva" | "calificacion";
+
 export default function ContactosPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Contact | null>(null);
   const [condicionesIva, setCondicionesIva] = useState<CondicionIva[]>([]);
+  const [search, setSearch] = useState("");
+  const [viewMode, setViewMode] = useState<"cards" | "list">("cards");
+  const [sortField, setSortField] = useState<SortField>("name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [form, setForm] = useState({
     name: "", phone: "", email: "", address: "", location: "", notes: "",
     whatsapp: "", instagram: "", tiktok: "",
     condicion_iva: "", cuit: "", condicion_iibb: "", calificacion: 5,
   });
+
+  function loadContacts() {
+    fetchJson<Contact[]>("/contacts").then(setContacts).catch(console.error);
+  }
 
   useEffect(() => {
     Promise.all([
@@ -49,7 +59,10 @@ export default function ContactosPage() {
 
   function openNew() {
     setEditing(null);
-    setForm({ name: "", phone: "", email: "", address: "", location: "", notes: "", whatsapp: "", instagram: "", tiktok: "", condicion_iva: "", cuit: "", condicion_iibb: "", calificacion: 5 });
+    setForm({
+      name: "", phone: "", email: "", address: "", location: "", notes: "",
+      whatsapp: "", instagram: "", tiktok: "", condicion_iva: "", cuit: "", condicion_iibb: "", calificacion: 5,
+    });
     setShowForm(true);
   }
 
@@ -72,25 +85,76 @@ export default function ContactosPage() {
         await postJson("/contacts", form);
       }
       setShowForm(false);
-      fetchJson<Contact[]>("/contacts").then(setContacts);
+      loadContacts();
     } catch (e) { console.error(e); }
   }
 
   async function handleDelete(id: number) {
     if (!confirm("Eliminar contacto?")) return;
-    try { await deleteJson(`/contacts/${id}`); fetchJson<Contact[]>("/contacts").then(setContacts); } catch (e) { console.error(e); }
+    try {
+      await deleteJson(`/contacts/${id}`);
+      loadContacts();
+    } catch (e) { console.error(e); }
   }
 
   const isConsumidorFinal = form.condicion_iva === "consumidor_final";
+
+  const filteredContacts = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const base = !q ? contacts : contacts.filter((c) => (
+      (c.name || "").toLowerCase().includes(q) ||
+      (c.phone || "").toLowerCase().includes(q) ||
+      (c.whatsapp || "").toLowerCase().includes(q) ||
+      (c.email || "").toLowerCase().includes(q) ||
+      (c.location || "").toLowerCase().includes(q) ||
+      (c.address || "").toLowerCase().includes(q) ||
+      (c.instagram || "").toLowerCase().includes(q) ||
+      (c.tiktok || "").toLowerCase().includes(q) ||
+      (c.cuit || "").toLowerCase().includes(q) ||
+      (c.condicion_iibb || "").toLowerCase().includes(q) ||
+      (condicionesIva.find(x => x.value === c.condicion_iva)?.label || c.condicion_iva || "").toLowerCase().includes(q)
+    ));
+
+    return [...base].sort((a, b) => {
+      let cmp = 0;
+      if (sortField === "name") cmp = (a.name || "").localeCompare(b.name || "");
+      else if (sortField === "phone") cmp = (a.phone || a.whatsapp || "").localeCompare(b.phone || b.whatsapp || "");
+      else if (sortField === "email") cmp = (a.email || "").localeCompare(b.email || "");
+      else if (sortField === "location") cmp = (a.location || "").localeCompare(b.location || "");
+      else if (sortField === "condicion_iva") cmp = (condicionesIva.find(x => x.value === a.condicion_iva)?.label || a.condicion_iva || "").localeCompare(condicionesIva.find(x => x.value === b.condicion_iva)?.label || b.condicion_iva || "");
+      else if (sortField === "calificacion") cmp = (Number(a.calificacion) || 0) - (Number(b.calificacion) || 0);
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [contacts, search, sortField, sortDir, condicionesIva]);
+
+  function toggleSort(field: SortField) {
+    if (sortField === field) setSortDir((d) => d === "asc" ? "desc" : "asc");
+    else {
+      setSortField(field);
+      setSortDir("asc");
+    }
+  }
+
+  function sortLabel(field: SortField, label: string) {
+    return `${label}${sortField === field ? (sortDir === "asc" ? " ↑" : " ↓") : ""}`;
+  }
 
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
         <PageTitle>👥 Contactos</PageTitle>
-        <div style={{ display: "flex", gap: "8px" }}>
+        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+            <IconButton variant={viewMode === "cards" ? "primary" : "ghost"} title="Vista tarjetas" onClick={() => setViewMode("cards")}>▦</IconButton>
+            <IconButton variant={viewMode === "list" ? "primary" : "ghost"} title="Vista lista" onClick={() => setViewMode("list")}>☰</IconButton>
+          </div>
           <IconButton variant="primary" onClick={openNew}>+</IconButton>
         </div>
       </div>
+
+      <Card style={{ marginBottom: "16px" }}>
+        <Input label="Buscar contacto" value={search} onChange={setSearch} placeholder="Nombre, teléfono, WhatsApp, email, localidad, CUIT..." />
+      </Card>
 
       {showForm && (
         <Card style={{ marginBottom: "20px" }}>
@@ -160,11 +224,11 @@ export default function ContactosPage() {
         </Card>
       )}
 
-      {loading ? <Loading /> : contacts.length === 0 ? (
+      {loading ? <Loading /> : filteredContacts.length === 0 ? (
         <Empty message="Sin contactos" />
-      ) : (
+      ) : viewMode === "cards" ? (
         <div style={{ display: "grid", gap: "10px" }}>
-          {contacts.map((c) => (
+          {filteredContacts.map((c) => (
             <Card key={c.id} onClick={() => openEdit(c)} style={{ cursor: "pointer" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div style={{ flex: 1 }}>
@@ -182,15 +246,53 @@ export default function ContactosPage() {
                     {c.email && <span>✉️ {c.email}</span>}
                     {c.location && <span>📍 {c.location}</span>}
                   </div>
-                  <div style={{ display: "flex", gap: "12px", fontSize: "12px", color: "#888", marginTop: "4px" }}>
-                    {c.instagram && <span>📷 @{c.instagram.replace('@','')}</span>}
-                    {c.tiktok && <span>🎵 @{c.tiktok.replace('@','')}</span>}
+                  <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", fontSize: "12px", color: "#888", marginTop: "4px" }}>
+                    {c.instagram && <span>📷 @{c.instagram.replace('@', '')}</span>}
+                    {c.tiktok && <span>🎵 @{c.tiktok.replace('@', '')}</span>}
                     {c.condicion_iva && <span>🏛️ {condicionesIva.find(x => x.value === c.condicion_iva)?.label || c.condicion_iva}</span>}
                     {c.cuit && <span>🔢 {c.cuit}</span>}
                   </div>
                 </div>
               </div>
             </Card>
+          ))}
+        </div>
+      ) : (
+        <div style={{ border: "1px solid #eee", borderRadius: "12px", overflow: "hidden", background: "#fff" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1.1fr 1.2fr 1fr 1.3fr 90px 90px", gap: "0", background: "#f8f8f8", padding: "8px 12px", fontSize: "11px", fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "1px", borderBottom: "1px solid #eee" }}>
+            <div onClick={() => toggleSort("name")} style={{ cursor: "pointer" }}>{sortLabel("name", "Contacto")}</div>
+            <div onClick={() => toggleSort("phone")} style={{ cursor: "pointer" }}>{sortLabel("phone", "Teléfono")}</div>
+            <div onClick={() => toggleSort("email")} style={{ cursor: "pointer" }}>{sortLabel("email", "Email")}</div>
+            <div onClick={() => toggleSort("location")} style={{ cursor: "pointer" }}>{sortLabel("location", "Localidad")}</div>
+            <div onClick={() => toggleSort("condicion_iva")} style={{ cursor: "pointer" }}>{sortLabel("condicion_iva", "IVA")}</div>
+            <div onClick={() => toggleSort("calificacion")} style={{ cursor: "pointer" }}>{sortLabel("calificacion", "Score")}</div>
+            <div>Acciones</div>
+          </div>
+          {filteredContacts.map((c) => (
+            <div key={c.id} style={{ display: "grid", gridTemplateColumns: "1.5fr 1.1fr 1.2fr 1fr 1.3fr 90px 90px", gap: "0", padding: "12px", borderBottom: "1px solid #f5f5f5", alignItems: "center", fontSize: "13px" }}>
+              <div>
+                <div style={{ fontWeight: 700 }}>{c.name || "Sin nombre"}</div>
+                {(c.whatsapp || c.instagram || c.tiktok) && (
+                  <div style={{ fontSize: "11px", color: "#888", marginTop: "2px" }}>
+                    {[c.whatsapp ? "WA" : "", c.instagram ? "IG" : "", c.tiktok ? "TT" : ""].filter(Boolean).join(" · ")}
+                  </div>
+                )}
+              </div>
+              <div>{c.phone || c.whatsapp || "-"}</div>
+              <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.email || "-"}</div>
+              <div>{c.location || "-"}</div>
+              <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{condicionesIva.find(x => x.value === c.condicion_iva)?.label || c.condicion_iva || "-"}</div>
+              <div>
+                <span style={{ fontSize: "11px", background: c.calificacion >= 7 ? "#27ae6022" : c.calificacion >= 4 ? "#f39c1215" : "#e74c3c22", color: c.calificacion >= 7 ? "#27ae60" : c.calificacion >= 4 ? "#f39c12" : "#e74c3c", padding: "2px 6px", borderRadius: "8px" }}>
+                  ★ {c.calificacion || 0}
+                </span>
+              </div>
+              <div>
+                <button onClick={() => openEdit(c)} style={{ background: "none", border: "none", color: "#6c63ff", cursor: "pointer", fontWeight: 600 }}>
+                  Editar
+                </button>
+              </div>
+            </div>
           ))}
         </div>
       )}
