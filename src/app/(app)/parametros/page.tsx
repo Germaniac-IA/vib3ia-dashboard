@@ -31,7 +31,7 @@ function CompactABM({ title, items, onAdd, onEdit, onDelete, renderItem }: {
       </div>
       {expanded && (
         <div style={{ borderTop: "1px solid #f0", padding: "0 16px 12px" }}>
-          {items.length > 3 && (
+          {items.length > 1 && (
             <div style={{ padding: "8px 0 4px" }}>
               <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar..."
                 style={{ width: "100%", padding: "6px 10px", border: "1px solid #ddd", borderRadius: "8px", fontSize: "12px", boxSizing: "border-box" }}
