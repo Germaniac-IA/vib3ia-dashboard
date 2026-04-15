@@ -219,11 +219,11 @@ export default function ProductosPage() {
                         )}
                       </div>
                     </div>
-                    <div style={{ width: "80px", height: "80px", flexShrink: 0, borderRadius: "8px", overflow: "hidden", border: "1px solid #eee", background: "#f8f8f8", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div style={{ width: "95px", height: "95px", flexShrink: 0, borderRadius: "8px", overflow: "hidden", border: "1px solid #eee", background: "#f8f8f8", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       {p.image_url ? (
                         <img src={p.image_url} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                       ) : (
-                        <div style={{ fontSize: "35px", opacity: 0.3 }}>📷</div>
+                        <div style={{ fontSize: "40px", opacity: 0.3 }}>📷</div>
                       )}
                     </div>
                   </div>
