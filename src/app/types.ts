@@ -67,11 +67,25 @@ export type OrderDetail = Order & {
 
 export type Lead = {
   id: number;
-  name: string;
-  phone: string;
-  address: string;
+  name: string | null;
+  phone: string | null;
+  whatsapp?: string | null;
+  email?: string | null;
+  address?: string | null;
+  location?: string | null;
+  source?: string | null;
+  source_channel?: string | null;
+  notes?: string | null;
+  first_message?: string | null;
+  last_message?: string | null;
+  interaction_count?: number;
+  converted_contact_id?: number | null;
+  converted_contact_name?: string | null;
   created_at: string;
-  status: "nuevo" | "convertido";
+  updated_at?: string;
+  last_interaction_at?: string | null;
+  converted_at?: string | null;
+  status: "new" | "contacted" | "waiting" | "qualified" | "converted" | "rejected";
 };
 
 export type Complaint = {
