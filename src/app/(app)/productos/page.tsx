@@ -41,6 +41,8 @@ export default function ProductosPage() {
     image_url: "",
     _pendingImage: "" as string | undefined,
     _hasComponents: false,
+    _orig_image_url: "",   // original value when modal opened (for change detection)
+    _orig_commercial_description: "",
   });
   const [selectedInput, setSelectedInput] = useState("");
   const [inputDisplay, setInputDisplay] = useState("");
@@ -50,6 +52,8 @@ export default function ProductosPage() {
   const [brandSearchFocus, setBrandSearchFocus] = useState(false);
   const [brandFilter, setBrandFilter] = useState("");
   const [inputQty, setInputQty] = useState("1");
+  const [sortField, setSortField] = useState<"name" | "price" | "stock" | "sku" | "category" | "brand">("name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   function load() {
     setLoading(true);
@@ -82,7 +86,7 @@ export default function ProductosPage() {
 
   function openNew() {
     setEditing(null);
-    setForm({ name: "", sku: "", sku_externo: "", description: "", commercial_description: "", price: "", unit: "unidad", category_id: "", brand_id: "", stock_quantity: "", min_stock: "", requires_stock: false, is_premium: false, premium_level: 5, cost_price: "", uses_inputs: false, image_url: "", _pendingImage: "" });
+    setForm({ name: "", sku: "", sku_externo: "", description: "", commercial_description: "", price: "", unit: "unidad", category_id: "", brand_id: "", stock_quantity: "", min_stock: "", requires_stock: false, is_premium: false, premium_level: 5, cost_price: "", uses_inputs: false, image_url: "", _pendingImage: "", _orig_image_url: "", _orig_commercial_description: "" });
     setComponents([]);
     setSelectedInput("");
     setInputDisplay("");
@@ -103,6 +107,8 @@ export default function ProductosPage() {
       commercial_description: p.commercial_description || "",
       _pendingImage: "",
       _hasComponents: false,
+      _orig_image_url: p.image_url || "",
+      _orig_commercial_description: p.commercial_description || "",
     });
     setSelectedInput("");
     setInputQty("1");
@@ -133,7 +139,7 @@ export default function ProductosPage() {
     if (!form.name.trim()) return;
     setSaving(true);
     try {
-      const payload = {
+      const payload: Record<string, unknown> = {
         name: form.name, sku: form.sku, sku_externo: form.sku_externo, description: form.description,
         price: Number(form.price) || 0, unit: form.unit, category_id: form.category_id ? Number(form.category_id) : null,
         brand_id: form.brand_id ? Number(form.brand_id) : null,
@@ -142,9 +148,13 @@ export default function ProductosPage() {
         requires_stock: form.requires_stock,
         is_premium: form.is_premium, premium_level: form.is_premium ? (Number(form.premium_level) || 5) : null,
         cost_price: form.uses_inputs ? 0 : (Number(form.cost_price) || 0),
-        commercial_description: form.commercial_description || null,
-        image_url: form.image_url || null,
+        commercial_description: form.commercial_description,
       };
+      // Image: if uploading a local file, let /image endpoint handle it (don't include image_url in this PUT)
+      const hasLocalImage = !!(form as any)._pendingImage;
+      if (!hasLocalImage) {
+        payload.image_url = form.image_url;
+      }
       let savedId = editing ? editing.id : null;
       if (editing) {
         await putJson(`/products/${editing.id}`, payload);
@@ -152,17 +162,19 @@ export default function ProductosPage() {
         const created = await postJson<{id:number}>(`/products`, payload);
         savedId = created.id;
       }
-      // Upload image if pending file
+      // Upload image if pending file (backend saves image to disk and updates DB with URL)
       if ((form as any)._pendingImage && savedId) {
         const api = (window as any).__API_URL__ || 'http://149.50.148.131:4000/api';
-        await fetch(`${api}/products/${savedId}/image`, {
+        const resImg = await fetch(`${api}/products/${savedId}/image`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
           body: JSON.stringify({ file: (form as any)._pendingImage }),
         });
-      } else if (form.image_url && savedId) {
-        // URL directo: guardar en DB sin subir archivo
-        await putJson(`/products/${savedId}`, { image_url: form.image_url });
+        if (!resImg.ok) {
+          const errText = await resImg.text();
+          console.error('Image upload failed:', resImg.status, errText);
+          throw new Error('Error subiendo imagen: ' + errText);
+        }
       }
       setShowForm(false);
       load();
@@ -197,6 +209,18 @@ export default function ProductosPage() {
   });
 
   const discCount = products.filter(p => p.is_active === false).length;
+
+  // Sort for list view
+  const sortedList = [...filtered].sort((a, b) => {
+    let cmp = 0;
+    if (sortField === "name") cmp = (a.name || "").localeCompare(b.name || "");
+    else if (sortField === "sku") cmp = (a.sku || "").localeCompare(b.sku || "");
+    else if (sortField === "category") cmp = (a.category_name || "").localeCompare(b.category_name || "");
+    else if (sortField === "brand") cmp = (a.brand_name || "").localeCompare(b.brand_name || "");
+    else if (sortField === "price") cmp = (Number(a.price) || 0) - (Number(b.price) || 0);
+    else if (sortField === "stock") cmp = (Number(a.stock_quantity) || 0) - (Number(b.stock_quantity) || 0);
+    return sortDir === "asc" ? cmp : -cmp;
+  });
 
   if (loading) return <Loading />;
 
@@ -281,15 +305,24 @@ export default function ProductosPage() {
       ) : (
         <div style={{ border: "1px solid #eee", borderRadius: "12px", overflow: "hidden" }}>
           <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 100px 100px 90px", gap: "0", background: "#f8f8f8", padding: "8px 12px", fontSize: "11px", fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "1px", borderBottom: "1px solid #eee" }}>
-            <div>Producto</div>
-            <div>SKU</div>
-            <div>Categoria</div>
-            <div>Marca</div>
-            <div>Precio</div>
-            <div>Stock</div>
+            {[
+              { key: "name" as const, label: "Producto" },
+              { key: "sku" as const, label: "SKU" },
+              { key: "category" as const, label: "Categoria" },
+              { key: "brand" as const, label: "Marca" },
+              { key: "price" as const, label: "Precio" },
+              { key: "stock" as const, label: "Stock" },
+            ].map(col => (
+              <div key={col.key} onClick={() => { if (sortField === col.key) setSortDir(d => d === "asc" ? "desc" : "asc"); else { setSortField(col.key as typeof sortField); setSortDir("asc"); } }}
+                style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}
+                title="Click para ordenar">
+                {col.label}
+                {sortField === col.key && (sortDir === "asc" ? " ↑" : " ↓")}
+              </div>
+            ))}
             <div>Acciones</div>
           </div>
-          {filtered.map(p => (
+          {sortedList.map(p => (
             <div key={p.id} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 100px 100px 90px", gap: "0", padding: "8px 12px", fontSize: "13px", alignItems: "center", borderBottom: "1px solid #f5f5f5", background: p.is_active === false ? "#fafafa" : "#fff", opacity: p.is_active === false ? 0.55 : 1 }}>
               <div style={{ fontWeight: 700, color: p.is_active === false ? "#aaa" : undefined, textDecoration: p.is_active === false ? "line-through" : undefined, cursor: "pointer" }} onClick={() => openEdit(p)}>{p.name}</div>
               <div style={{ fontSize: "12px", color: "#aaa" }}>{p.sku || "—"}</div>
