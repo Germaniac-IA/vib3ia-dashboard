@@ -41,6 +41,14 @@ export default function ContactosPage() {
     whatsapp: "", instagram: "", tiktok: "",
     condicion_iva: "", cuit: "", condicion_iibb: "", calificacion: 5,
   });
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 900);
+    onResize();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   function loadContacts() {
     fetchJson<Contact[]>("/contacts").then(setContacts).catch(console.error);
