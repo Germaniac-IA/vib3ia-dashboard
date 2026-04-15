@@ -130,6 +130,13 @@ export default function ProductosPage() {
     finally { setSaving(false); }
   }
 
+  async function toggleActive(p: Product) {
+    try {
+      await putJson(`/products/${p.id}`, { is_active: p.is_active === false ? true : false });
+      load();
+    } catch (e) { console.error(e); }
+  }
+
   async function handleDelete(id: number) {
     if (!confirm("Eliminar este producto?")) return;
     try { await deleteJson(`/products/${id}`); load(); } catch (e) { console.error(e); }
@@ -184,14 +191,14 @@ export default function ProductosPage() {
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "12px" }}>
               {prods.map(p => (
-                <Card key={p.id} style={{ cursor: "pointer" }} onClick={() => openEdit(p)}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <Card key={p.id}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", cursor: "pointer" }} onClick={() => openEdit(p)}>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 700, fontSize: "14px", marginBottom: "2px" }}>{p.name}</div>
                       {p.sku && <div style={{ fontSize: "11px", color: "#aaa" }}>SKU {p.sku}</div>}
                       {p.sku_externo && <div style={{ fontSize: "11px", color: "#aaa" }}>Ext: {p.sku_externo}</div>}
                     </div>
-                    <div style={{ display: "flex", gap: "2px" }}>
+                    <div style={{ display: "flex", gap: "2px", flexShrink: 0 }}>
                       {p.is_premium && p.premium_level && (
                         <span style={{ fontSize: "10px", background: "#f39c1215", color: "#f39c12", padding: "2px 6px", borderRadius: "8px", fontWeight: 600 }}>
                           {p.premium_level}/10
@@ -199,7 +206,7 @@ export default function ProductosPage() {
                       )}
                     </div>
                   </div>
-                  <div style={{ fontSize: "20px", fontWeight: 700, color: "#6c63ff", marginTop: "8px" }}>
+                  <div style={{ fontSize: "20px", fontWeight: 700, color: "#6c63ff", marginTop: "8px", cursor: "pointer" }} onClick={() => openEdit(p)}>
                     ${Number(p.price).toLocaleString("es-AR")}
                   </div>
                   {p.cost_price > 0 && (
@@ -207,13 +214,23 @@ export default function ProductosPage() {
                       Costo: ${Number(p.cost_price).toLocaleString("es-AR")}
                     </div>
                   )}
-                  <div style={{ display: "flex", gap: "4px", marginTop: "8px", flexWrap: "wrap" }}>
-                    {p.brand_name && <span style={{ fontSize: "11px", background: "#eee", padding: "2px 6px", borderRadius: "8px" }}>{p.brand_name}</span>}
-                    {p.requires_stock && (
-                      <span style={{ fontSize: "11px", background: (p.stock_quantity || 0) <= (p.min_stock || 0) ? "#e74c3c22" : "#27ae6022", color: (p.stock_quantity || 0) <= (p.min_stock || 0) ? "#e74c3c" : "#27ae60", padding: "2px 6px", borderRadius: "8px" }}>
-                        {p.stock_quantity || 0} {p.unit}
-                      </span>
-                    )}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "8px" }}>
+                    <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                      {p.brand_name && <span style={{ fontSize: "11px", background: "#eee", padding: "2px 6px", borderRadius: "8px" }}>{p.brand_name}</span>}
+                      {p.requires_stock && (
+                        <span style={{ fontSize: "11px", background: (p.stock_quantity || 0) <= (p.min_stock || 0) ? "#e74c3c22" : "#27ae6022", color: (p.stock_quantity || 0) <= (p.min_stock || 0) ? "#e74c3c" : "#27ae60", padding: "2px 6px", borderRadius: "8px" }}>
+                          {p.stock_quantity || 0} {p.unit}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ display: "flex", gap: "4px" }}>
+                      <IconButton variant={p.is_active === false ? "secondary" : "ghost"} title={p.is_active === false ? "Activar" : "Discontinuar"}
+                        onClick={(e) => { e.stopPropagation(); toggleActive(p); }}>
+                        {p.is_active === false ? "✓" : "⏸"}
+                      </IconButton>
+                      <IconButton variant="ghost" title="Editar" onClick={(e) => { e.stopPropagation(); openEdit(p); }}>✏️</IconButton>
+                      <IconButton variant="danger" title="Eliminar" onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}>🗑️</IconButton>
+                    </div>
                   </div>
                 </Card>
               ))}
