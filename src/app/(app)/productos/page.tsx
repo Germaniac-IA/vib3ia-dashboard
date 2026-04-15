@@ -231,8 +231,8 @@ export default function ProductosPage() {
             <div style={{ fontSize: "12px", fontWeight: 700, color: "#888", marginBottom: "10px", textTransform: "uppercase", letterSpacing: "1px" }}>{catName}</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "12px" }}>
               {prods.map(p => (
-                <Card key={p.id} style={{ opacity: p.is_active === false ? 0.55 : 1, border: p.is_active === false ? "1px dashed #ccc" : undefined }}>
-                  <div style={{ display: "flex", gap: "12px", cursor: "pointer" }} onClick={() => openEdit(p)}>
+                <Card key={p.id} style={{ opacity: p.is_active === false ? 0.55 : 1, border: p.is_active === false ? "1px dashed #ccc" : undefined, minHeight: "180px" }}>
+                  <div style={{ display: "flex", gap: "12px", cursor: "pointer", minHeight: "130px" }} onClick={() => openEdit(p)}>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 700, fontSize: "14px", marginBottom: "2px", textDecoration: p.is_active === false ? "line-through" : undefined, color: p.is_active === false ? "#aaa" : undefined }}>{p.name}</div>
                       {p.sku && <div style={{ fontSize: "11px", color: p.is_active === false ? "#ccc" : "#aaa" }}>SKU {p.sku}</div>}
