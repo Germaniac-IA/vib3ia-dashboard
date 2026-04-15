@@ -2,13 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { fetchJson, postJson, putJson, deleteJson } from "../../lib";
-import { Card, CardHeader, IconButton, Input, Select, PageTitle, Loading } from "../../components/shared/UI";
+import { Card, IconButton, Input, Select, PageTitle, Loading } from "../../components/shared/UI";
 
 type InputItem = { id: number; name: string; unit: string; default_cost: number };
 type ProductComponent = { id: number; input_item_id: number; input_item_name: string; input_unit: string; quantity: number; default_cost: number };
-
 type Category = { id: number; name: string; auto_generate_sku: boolean; sku_counter: number; };
-
+type Brand = { id: number; name: string; is_imported: boolean; premium_level: number };
 type Product = {
   id: number; name: string; sku: string; sku_externo: string; description: string;
   price: number; cost_price: number; computed_cost: number; unit: string;
@@ -21,17 +20,16 @@ type Product = {
 
 export default function ProductosPage() {
   const [products, setProducts] = useState<Product[]>([]);
-  const [search, setSearch] = useState("");
-  const [showInactive, setShowInactive] = useState(false);
+  const [categoriesFull, setCategoriesFull] = useState<Category[]>([]);
   const [categories, setCategories] = useState<{id:number;name:string}[]>([]);
   const [brands, setBrands] = useState<{id:number;name:string}[]>([]);
-  const [categoriesFull, setCategoriesFull] = useState<Category[]>([]);
   const [allInputs, setAllInputs] = useState<InputItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [components, setComponents] = useState<ProductComponent[]>([]);
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState("");
   const [form, setForm] = useState({
     name: "", sku: "", sku_externo: "", description: "",
     price: "", unit: "unidad", category_id: "", brand_id: "",
@@ -49,7 +47,13 @@ export default function ProductosPage() {
       fetchJson<{id:number;name:string}[]>("/product-brands"),
       fetchJson<InputItem[]>("/input-items"),
     ])
-      .then(([p, c, b, i]) => { setProducts(p); setCategoriesFull(c); setCategories(c.map(x=>({value:String(x.id),label:x.name}))); setBrands(b); setAllInputs(i); })
+      .then(([p, c, b, i]) => {
+        setProducts(p);
+        setCategoriesFull(c);
+        setCategories(c.map(x => ({id: x.id, name: x.name})));
+        setBrands(b);
+        setAllInputs(i);
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   }
@@ -120,11 +124,8 @@ export default function ProductosPage() {
         is_premium: form.is_premium, premium_level: form.is_premium ? (Number(form.premium_level) || 5) : null,
         cost_price: form.uses_inputs ? 0 : (Number(form.cost_price) || 0),
       };
-      if (editing) {
-        await putJson(`/products/${editing.id}`, payload);
-      } else {
-        await postJson("/products", payload);
-      }
+      if (editing) await putJson(`/products/${editing.id}`, payload);
+      else await postJson("/products", payload);
       setShowForm(false);
       load();
     } catch (e) { console.error(e); }
@@ -132,10 +133,7 @@ export default function ProductosPage() {
   }
 
   async function toggleActive(p: Product) {
-    try {
-      await putJson(`/products/${p.id}`, { is_active: p.is_active === false ? true : false });
-      load();
-    } catch (e) { console.error(e); }
+    try { await putJson(`/products/${p.id}`, { is_active: p.is_active === false }); load(); } catch (e) { console.error(e); }
   }
 
   async function handleDelete(id: number) {
@@ -145,13 +143,13 @@ export default function ProductosPage() {
 
   const computedCost = components.reduce((sum, c) => sum + (Number(c.quantity) * Number(c.default_cost)), 0);
 
-  const filtered = (search
+  const filtered = search
     ? products.filter(p =>
         p.name.toLowerCase().includes(search.toLowerCase()) ||
         (p.sku || "").toLowerCase().includes(search.toLowerCase()) ||
         (p.sku_externo || "").toLowerCase().includes(search.toLowerCase())
       )
-    : products).filter(p => showInactive || p.is_active !== false);
+    : products;
 
   const grouped: Record<string, Product[]> = {};
   filtered.forEach(p => {
@@ -160,25 +158,26 @@ export default function ProductosPage() {
     grouped[cat].push(p);
   });
 
+  const discontinuedCount = products.filter(p => p.is_active === false).length;
+
   if (loading) return <Loading />;
 
   return (
     <div style={{ maxWidth: "900px" }}>
       <PageTitle>📦 Productos</PageTitle>
-      <div style={{ background: "linear-gradient(135deg, #6c63ff15, #1a1a2e08)", border: "1px solid #6c63ff30", borderRadius: "12px", padding: "16px 20px", marginBottom: "20px", fontSize: "13px", color: "#666", lineHeight: "1.6" }}>
+      <div style={{ background: "linear-gradient(135deg, #6c63ff15, #1a1a2e08)", border: "1px solid #6c63ff30", borderRadius: "12px", padding: "14px 18px", marginBottom: "20px", fontSize: "12px", color: "#666", lineHeight: "1.5" }}>
         <strong style={{ color: "#6c63ff" }}>📦 Catalogo de productos</strong><br />
         Carga tus productos, asignales categoria y marca, defini precios y niveles premium.
-        Si un producto se arma con insumos, indica cuales y el sistema calculara el costo automaticamente.
+        Si un producto se arma con insumos, indicá cuales y el sistema calculara el costo automaticamente.
       </div>
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", flexWrap: "wrap", gap: "8px" }}>
         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nombre, SKU, SKU externo..."
           style={{ flex: 1, maxWidth: "400px", padding: "8px 12px", border: "1px solid #ddd", borderRadius: "8px", fontSize: "13px" }} />
-        <span style={{ color: "#888", fontSize: "13px", marginLeft: "12px" }}>{filtered.length}/{products.length}</span>
-        <label style={{ fontSize: "12px", color: "#888", display: "flex", alignItems: "center", gap: "4px", marginLeft: "12px", cursor: "pointer" }}>
-          <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />
-          Ver todos
-        </label>
+        <span style={{ color: "#888", fontSize: "13px" }}>
+          {filtered.length} producto{filtered.length !== 1 ? "s" : ""}
+          {discontinuedCount > 0 && <span style={{ color: "#e74c3c" }}> ({discontinuedCount} discontinuad{discontinuedCount !== 1 ? "os" : "o"})</span>}
+        </span>
         <IconButton variant="primary" title="Nuevo producto" onClick={openNew}>+</IconButton>
       </div>
 
@@ -196,12 +195,12 @@ export default function ProductosPage() {
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "12px" }}>
               {prods.map(p => (
-                <Card key={p.id}>
+                <Card key={p.id} style={{ opacity: p.is_active === false ? 0.55 : 1, border: p.is_active === false ? "1px dashed #ccc" : undefined }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", cursor: "pointer" }} onClick={() => openEdit(p)}>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 700, fontSize: "14px", marginBottom: "2px" }}>{p.name}</div>
-                      {p.sku && <div style={{ fontSize: "11px", color: "#aaa" }}>SKU {p.sku}</div>}
-                      {p.sku_externo && <div style={{ fontSize: "11px", color: "#aaa" }}>Ext: {p.sku_externo}</div>}
+                      <div style={{ fontWeight: 700, fontSize: "14px", marginBottom: "2px", textDecoration: p.is_active === false ? "line-through" : undefined, color: p.is_active === false ? "#aaa" : undefined }}>{p.name}</div>
+                      {p.sku && <div style={{ fontSize: "11px", color: p.is_active === false ? "#ccc" : "#aaa" }}>SKU {p.sku}</div>}
+                      {p.sku_externo && <div style={{ fontSize: "11px", color: p.is_active === false ? "#ccc" : "#aaa" }}>Ext: {p.sku_externo}</div>}
                     </div>
                     <div style={{ display: "flex", gap: "2px", flexShrink: 0 }}>
                       {p.is_premium && p.premium_level && (
@@ -211,7 +210,10 @@ export default function ProductosPage() {
                       )}
                     </div>
                   </div>
-                  <div style={{ fontSize: "20px", fontWeight: 700, color: "#6c63ff", marginTop: "8px", cursor: "pointer" }} onClick={() => openEdit(p)}>
+                  {p.is_active === false && (
+                    <div style={{ fontSize: "11px", color: "#e74c3c", fontWeight: 700, marginBottom: "4px" }}>⏸ DISCONTINUADO</div>
+                  )}
+                  <div style={{ fontSize: "20px", fontWeight: 700, color: p.is_active === false ? "#ccc" : "#6c63ff", marginTop: "8px", cursor: "pointer" }} onClick={() => openEdit(p)}>
                     ${Number(p.price).toLocaleString("es-AR")}
                   </div>
                   {p.cost_price > 0 && (
@@ -224,12 +226,14 @@ export default function ProductosPage() {
                       {p.brand_name && <span style={{ fontSize: "11px", background: "#eee", padding: "2px 6px", borderRadius: "8px" }}>{p.brand_name}</span>}
                       {p.requires_stock && (
                         <span style={{ fontSize: "11px", background: (p.stock_quantity || 0) <= (p.min_stock || 0) ? "#e74c3c22" : "#27ae6022", color: (p.stock_quantity || 0) <= (p.min_stock || 0) ? "#e74c3c" : "#27ae60", padding: "2px 6px", borderRadius: "8px" }}>
-                          {p.stock_quantity || 0} {p.unit}
+                          {(p.stock_quantity || 0)} {p.unit}
                         </span>
                       )}
                     </div>
-                    <div style={{ display: "flex", gap: "4px" }}>
-                      <IconButton variant={p.is_active === false ? "secondary" : "ghost"} title={p.is_active === false ? "Activar" : "Discontinuar"}
+                    <div style={{ display: "flex", gap: "2px" }}>
+                      <IconButton
+                        variant={p.is_active === false ? "primary" : "ghost"}
+                        title={p.is_active === false ? "Activar" : "Discontinuar"}
                         onClick={(e) => { e.stopPropagation(); toggleActive(p); }}>
                         {p.is_active === false ? "✓" : "⏸"}
                       </IconButton>
@@ -253,20 +257,11 @@ export default function ProductosPage() {
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
               <Input label="Nombre" value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="Nombre del producto" />
-              <Select label="Categoria" value={form.category_id} onChange={(v) => setForm({ ...form, category_id: v, sku: '' })}
+              <Select label="Categoria" value={form.category_id} onChange={(v) => setForm({ ...form, category_id: v, sku: "" })}
                 options={[{value:"",label:"Sin categoria"}, ...categories.map(c=>({value:String(c.id),label:c.name}))]} />
               <Select label="Marca" value={form.brand_id} onChange={(v) => setForm({ ...form, brand_id: v })}
                 options={[{value:"",label:"Sin marca"}, ...brands.map(b=>({value:String(b.id),label:b.name}))]} />
-              <div>
-                <Input label="SKU" value={form.sku} onChange={(v) => setForm({ ...form, sku: v })} placeholder="Codigo interno o se genera solo" />
-                {form.category_id && !form.sku && (() => {
-                  const cat = categoriesFull.find(c => String(c.id) === form.category_id);
-                  if (!cat || !cat.auto_generate_sku) return null;
-                  const code = (cat.name || '').toUpperCase().replace(/[^A-Z]/g, '').substring(0, 3).padEnd(3, 'X');
-                  const next = (cat.sku_counter || 0) + 1;
-                  return <div style={{ fontSize: "11px", color: "#27ae60", marginTop: "2px" }}>Se generara: {code}-{String(next).padStart(3,'0')}</div>;
-                })()}
-              </div>
+              <Input label="SKU" value={form.sku} onChange={(v) => setForm({ ...form, sku: v })} placeholder="Codigo interno o se genera solo" />
               <Input label="SKU externo" value={form.sku_externo} onChange={(v) => setForm({ ...form, sku_externo: v })} placeholder="Codigo del proveedor" />
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", gridColumn: "1 / -1" }}>
                 <Input label="Precio de venta" value={form.price} onChange={(v) => setForm({ ...form, price: v })} placeholder="0.00" type="number" />
@@ -274,10 +269,16 @@ export default function ProductosPage() {
               </div>
             </div>
             <Input label="Unidad" value={form.unit} onChange={(v) => setForm({ ...form, unit: v })} placeholder="unidad, kilo, litro..." />
-
             <Input label="Descripcion" value={form.description} onChange={(v) => setForm({ ...form, description: v })} placeholder="Descripcion del producto" />
 
-            {/* Premium */}
+            {form.category_id && !form.sku && (() => {
+              const cat = categoriesFull.find(c => String(c.id) === form.category_id);
+              if (!cat || !cat.auto_generate_sku) return null;
+              const code = (cat.sku_prefix || "XXX").toUpperCase();
+              const next = (cat.sku_counter || 0) + 1;
+              return <div style={{ fontSize: "12px", color: "#27ae60", marginTop: "4px" }}>Se generara: {code}-{String(next).padStart(3,"0")}</div>;
+            })()}
+
             <div style={{ marginTop: "16px", padding: "12px", background: "#f8f8f8", borderRadius: "10px" }}>
               <label style={{ fontSize: "13px", fontWeight: 600, display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
                 <input type="checkbox" checked={form.is_premium} onChange={(e) => setForm({ ...form, is_premium: e.target.checked })} />
@@ -295,7 +296,6 @@ export default function ProductosPage() {
               )}
             </div>
 
-            {/* Stock */}
             <div style={{ marginTop: "12px", padding: "12px", background: "#f8f8f8", borderRadius: "10px" }}>
               <label style={{ fontSize: "13px", fontWeight: 600, display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
                 <input type="checkbox" checked={form.requires_stock} onChange={(e) => setForm({ ...form, requires_stock: e.target.checked })} />
@@ -309,7 +309,6 @@ export default function ProductosPage() {
               )}
             </div>
 
-            {/* Insumos */}
             <div style={{ marginTop: "12px", padding: "12px", background: "#f8f8f8", borderRadius: "10px" }}>
               <label style={{ fontSize: "13px", fontWeight: 600, display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
                 <input type="checkbox" checked={form.uses_inputs} onChange={(e) => setForm({ ...form, uses_inputs: e.target.checked })} />
@@ -332,7 +331,6 @@ export default function ProductosPage() {
                       </div>
                     </div>
                   )}
-
                   <div style={{ display: "flex", gap: "6px", alignItems: "flex-end" }}>
                     <div style={{ flex: 1 }}>
                       <label style={{ fontSize: "11px", fontWeight: 600, display: "block", marginBottom: "2px", color: "#555" }}>Insumo</label>
@@ -354,10 +352,9 @@ export default function ProductosPage() {
                   )}
                 </div>
               )}
-
               {!form.uses_inputs && (
                 <div style={{ marginTop: "8px", color: "#888", fontSize: "12px" }}>
-                  El costo manual esta arriba junto al precio de venta.
+                  El costo manual esta junto al precio de venta.
                 </div>
               )}
             </div>
