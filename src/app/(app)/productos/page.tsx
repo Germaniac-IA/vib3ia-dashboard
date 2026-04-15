@@ -9,6 +9,7 @@ type ProductComponent = { id: number; input_item_id: number; input_item_name: st
 type Category = { id: number; name: string; auto_generate_sku: boolean; sku_counter: number };
 type Product = {
   id: number; name: string; sku: string; sku_externo: string; description: string;
+  commercial_description: string;
   price: number; cost_price: number; computed_cost: number; unit: string;
   stock_quantity: number; min_stock: number; requires_stock: boolean;
   is_premium: boolean; premium_level: number;
@@ -32,7 +33,7 @@ export default function ProductosPage() {
   const [search, setSearch] = useState("");
   const [showAll, setShowAll] = useState(false);
   const [form, setForm] = useState({
-    name: "", sku: "", sku_externo: "", description: "",
+    name: "", sku: "", sku_externo: "", description: "", commercial_description: "",
     price: "", unit: "unidad", category_id: "", brand_id: "",
     stock_quantity: "", min_stock: "", requires_stock: false,
     is_premium: false, premium_level: 5, cost_price: "", uses_inputs: false,
@@ -72,7 +73,7 @@ export default function ProductosPage() {
 
   function openNew() {
     setEditing(null);
-    setForm({ name: "", sku: "", sku_externo: "", description: "", price: "", unit: "unidad", category_id: "", brand_id: "", stock_quantity: "", min_stock: "", requires_stock: false, is_premium: false, premium_level: 5, cost_price: "", uses_inputs: false, image_url: "", _pendingImage: "" });
+    setForm({ name: "", sku: "", sku_externo: "", description: "", commercial_description: "", price: "", unit: "unidad", category_id: "", brand_id: "", stock_quantity: "", min_stock: "", requires_stock: false, is_premium: false, premium_level: 5, cost_price: "", uses_inputs: false, image_url: "", _pendingImage: "" });
     setComponents([]);
     setSelectedInput("");
     setInputQty("1");
@@ -89,6 +90,7 @@ export default function ProductosPage() {
       is_premium: p.is_premium || false, premium_level: p.premium_level || 5,
       cost_price: String(p.cost_price || ""), uses_inputs: false,
       image_url: p.image_url || "",
+      commercial_description: p.commercial_description || "",
       _pendingImage: "",
     });
     setSelectedInput("");
@@ -128,6 +130,7 @@ export default function ProductosPage() {
         requires_stock: form.requires_stock,
         is_premium: form.is_premium, premium_level: form.is_premium ? (Number(form.premium_level) || 5) : null,
         cost_price: form.uses_inputs ? 0 : (Number(form.cost_price) || 0),
+        commercial_description: form.commercial_description || null,
         image_url: form.image_url || null,
       };
       let savedId = editing ? editing.id : null;
@@ -281,6 +284,20 @@ export default function ProductosPage() {
             </div>
             <Input label="Unidad" value={form.unit} onChange={(v) => setForm({ ...form, unit: v })} placeholder="unidad, kilo, litro..." />
             <Input label="Descripcion" value={form.description} onChange={(v) => setForm({ ...form, description: v })} placeholder="Descripcion del producto" />
+
+            <div style={{ marginBottom: "12px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
+                <label style={{ fontSize: "12px", fontWeight: 600, color: "#555" }}>Descripcion comercial para IA</label>
+                <span title="Texto que el agente de IA usara para describir este producto al cliente. Sea claro, conciso y orientalo a la venta." style={{ cursor: "help", fontSize: "14px", opacity: 0.6 }}>?</span>
+              </div>
+              <textarea
+                value={form.commercial_description}
+                onChange={(e) => setForm(f => ({ ...f, commercial_description: e.target.value }))}
+                placeholder="Ej: Remeraoversized de algodon peinado, cuello redondo, ideal para uso diario y verano..."
+                rows={3}
+                style={{ width: "100%", padding: "8px 10px", border: "1px solid #ddd", borderRadius: "8px", fontSize: "13px", resize: "vertical", fontFamily: "inherit" }}
+              />
+            </div>
 
             <div style={{ marginBottom: "12px" }}>
               <label style={{ fontSize: "12px", fontWeight: 600, display: "block", marginBottom: "4px", color: "#555" }}>Imagen del producto</label>
