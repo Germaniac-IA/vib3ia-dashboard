@@ -370,7 +370,7 @@ export default function ProductosPage() {
                 <input type="checkbox" checked={form.uses_inputs} onChange={(e) => setForm({ ...form, uses_inputs: e.target.checked })} />
                 Usa insumos (costo calculado)
               </label>
-              {form.uses_inputs && editing && (
+              {form.uses_inputs && (
                 <div style={{ marginTop: "10px" }}>
                   {components.length > 0 && (
                     <div style={{ marginBottom: "8px" }}>
