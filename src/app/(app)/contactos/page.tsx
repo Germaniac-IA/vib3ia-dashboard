@@ -42,9 +42,13 @@ export default function ContactosPage() {
     condicion_iva: "", cuit: "", condicion_iibb: "", calificacion: 5,
   });
   const [isMobile, setIsMobile] = useState(false);
+  const [isTiny, setIsTiny] = useState(false);
 
   useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth < 900);
+    const onResize = () => {
+      setIsMobile(window.innerWidth < 900);
+      setIsTiny(window.innerWidth < 500);
+    };
     onResize();
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
@@ -176,7 +180,7 @@ export default function ContactosPage() {
                 </button>
               )}
             </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: isTiny ? "1fr" : "1fr 1fr", gap: "12px" }}>
             <Input label="Nombre" value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
             <Input label="Teléfono" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} />
             <Input label="WhatsApp" value={form.whatsapp} onChange={(v) => setForm({ ...form, whatsapp: v })} />
@@ -188,7 +192,7 @@ export default function ContactosPage() {
           </div>
 
           <div style={{ marginTop: "16px", padding: "12px", background: "#f8f8f8", borderRadius: "10px" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: isTiny ? "1fr" : "1fr 1fr", gap: "12px" }}>
               <div>
                 <label style={{ fontSize: "12px", fontWeight: 600, display: "block", marginBottom: "4px", color: "#555" }}>Condición IVA</label>
                 <select value={form.condicion_iva} onChange={(e) => setForm({ ...form, condicion_iva: e.target.value })}
