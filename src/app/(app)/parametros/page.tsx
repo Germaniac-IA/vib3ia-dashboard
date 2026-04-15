@@ -299,6 +299,93 @@ function BrandsABM() {
   );
 }
 
+function LeadSourcesABM() {
+  const [items, setItems] = useState<Array<{ id: number; name: string; sort_order?: number; is_active?: boolean }>>([]);
+  const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [form, setForm] = useState({ name: "", sort_order: "0" });
+
+  async function load() {
+    const data = await fetchJson<Array<{ id: number; name: string; sort_order?: number; is_active?: boolean }>>("/lead-sources");
+    setItems(data);
+  }
+
+  useEffect(() => {
+    load().finally(() => setLoading(false));
+  }, []);
+
+  function resetForm() {
+    setEditingId(null);
+    setForm({ name: "", sort_order: "0" });
+  }
+
+  function startEdit(item: { id: number; name: string; sort_order?: number }) {
+    setEditingId(item.id);
+    setForm({ name: item.name || "", sort_order: String(item.sort_order ?? 0) });
+  }
+
+  async function handleSave() {
+    if (!form.name.trim()) return;
+    setSaving(true);
+    try {
+      const payload = { name: form.name.trim(), sort_order: Number(form.sort_order) || 0 };
+      if (editingId) await putJson(`/lead-sources/${editingId}`, payload);
+      else await postJson("/lead-sources", payload);
+      await load();
+      resetForm();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function remove(id: number) {
+    if (!confirm("Eliminar origen?")) return;
+    await deleteJson(`/lead-sources/${id}`);
+    await load();
+    if (editingId === id) resetForm();
+  }
+
+  return (
+    <Card style={{ marginBottom: "16px" }}>
+      <CardHeader
+        title="Orígenes de leads"
+        action={<IconButton variant="ghost" onClick={() => setOpen(!open)}>{open ? "▲" : "▼"}</IconButton>}
+      />
+      {open ? (
+        <>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 120px auto", gap: "10px", marginBottom: "14px", alignItems: "end" }}>
+            <Input label="Nombre" value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="Meta Ads, Referido, Web..." />
+            <Input label="Orden" value={form.sort_order} onChange={(v) => setForm({ ...form, sort_order: v })} type="number" />
+            <div style={{ display: "flex", gap: "8px", paddingBottom: "12px" }}>
+              <Button onClick={handleSave} disabled={saving}>{editingId ? "Guardar" : "Agregar"}</Button>
+              {editingId ? <Button variant="secondary" onClick={resetForm}>Cancelar</Button> : null}
+            </div>
+          </div>
+
+          {loading ? <Loading /> : (
+            <div style={{ display: "grid", gap: "8px" }}>
+              {items.map((item) => (
+                <div key={item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", border: "1px solid #eee", borderRadius: "10px", padding: "10px 12px" }}>
+                  <div>
+                    <div style={{ fontWeight: 600 }}>{item.name}</div>
+                    <div style={{ fontSize: "12px", color: "#888" }}>Orden: {item.sort_order ?? 0}</div>
+                  </div>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <IconButton variant="secondary" title="Editar" onClick={() => startEdit(item)}>✏️</IconButton>
+                    <IconButton variant="danger" title="Eliminar" onClick={() => remove(item.id)}>🗑️</IconButton>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      ) : null}
+    </Card>
+  );
+}
+
 function InsumosABM() {
   const [items, setItems] = useState<InputItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -376,6 +463,7 @@ export default function ParametrosPage() {
       <PaymentMethodsABM />
       <CategoriesABM />
       <BrandsABM />
+      <LeadSourcesABM />
       <InsumosABM />
     </div>
   );
