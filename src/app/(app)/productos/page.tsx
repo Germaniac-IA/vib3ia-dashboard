@@ -223,7 +223,7 @@ export default function ProductosPage() {
                       {p.image_url ? (
                         <img src={p.image_url} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                       ) : (
-                        <div style={{ fontSize: "28px", opacity: 0.3 }}>📷</div>
+                        <div style={{ fontSize: "35px", opacity: 0.3 }}>📷</div>
                       )}
                     </div>
                   </div>
