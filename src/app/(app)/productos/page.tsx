@@ -41,6 +41,7 @@ export default function ProductosPage() {
     _pendingImage: "" as string | undefined,
   });
   const [selectedInput, setSelectedInput] = useState("");
+  const [inputSearchFocus, setInputSearchFocus] = useState(false);
   const [inputQty, setInputQty] = useState("1");
 
   function load() {
@@ -387,11 +388,29 @@ export default function ProductosPage() {
                     </div>
                   )}
                   <div style={{ display: "flex", gap: "6px", alignItems: "flex-end" }}>
-                    <div style={{ flex: 1 }}>
-                      <select value={selectedInput} onChange={(e) => setSelectedInput(e.target.value)} style={{ width: "100%", padding: "6px 8px", border: "1px solid #ddd", borderRadius: "8px", fontSize: "12px" }}>
-                        <option value="">Seleccionar insumo...</option>
-                        {allInputs.map(i => <option key={i.id} value={i.id}>{i.name} (${Number(i.default_cost).toLocaleString("es-AR")}/{i.unit})</option>)}
-                      </select>
+                    <div style={{ flex: 1, position: "relative" }}>
+                      <input
+                        value={selectedInput}
+                        onChange={(e) => setSelectedInput(e.target.value)}
+                        onFocus={() => setInputSearchFocus(true)}
+                        placeholder="Buscar insumo..."
+                        style={{ width: "100%", padding: "6px 8px", border: "1px solid #ddd", borderRadius: "8px", fontSize: "12px" }}
+                      />
+                      {inputSearchFocus && (
+                        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#fff", border: "1px solid #ddd", borderRadius: "8px", zIndex: 10, maxHeight: "160px", overflowY: "auto", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+                          {allInputs.filter(i => !selectedInput || i.name.toLowerCase().includes(selectedInput.toLowerCase())).length === 0 && (
+                            <div style={{ padding: "8px 12px", color: "#aaa", fontSize: "12px" }}>Sin resultados</div>
+                          )}
+                          {allInputs.filter(i => !selectedInput || i.name.toLowerCase().includes(selectedInput.toLowerCase())).map(i => (
+                            <div key={i.id} onClick={() => { setSelectedInput(String(i.id)); setInputSearchFocus(false); }}
+                              style={{ padding: "8px 12px", fontSize: "12px", cursor: "pointer", borderBottom: "1px solid #f0f0f0" }}
+                              onMouseEnter={(e) => (e.currentTarget.style.background = "#f5f5ff")}
+                              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
+                              {i.name} (${Number(i.default_cost).toLocaleString("es-AR")}/{i.unit})
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <div style={{ width: "70px" }}>
                       <input value={inputQty} onChange={(e) => setInputQty(e.target.value)} type="number" min="0" step="0.01" placeholder="1"
