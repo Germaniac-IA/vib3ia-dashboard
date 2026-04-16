@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { fetchJson } from "../../lib";
 
 type Delivery = {
   id: number; order_id: number; address: string; scheduled_date: string;
@@ -33,12 +34,12 @@ export default function EntregasPage() {
 
   function load() {
     setLoading(true);
-    fetch(`/api/deliveries`)
+    fetchJson<Delivery[]>('/deliveries')
       .then(r => r.json())
       .then(data => setDeliveries(data))
       .catch(() => {})
       .finally(() => setLoading(false));
-    fetch(`/api/deliveries/stats`)
+    fetchJson<Stats>('/deliveries/stats')
       .then(r => r.json())
       .then(data => setStats(data))
       .catch(() => {});
@@ -49,7 +50,7 @@ export default function EntregasPage() {
   function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setCreating(true);
-    fetch("/api/deliveries", {
+    fetch("http://149.50.148.131:4000/api/deliveries", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -71,20 +72,20 @@ export default function EntregasPage() {
 
   function handleConfirm(id: number) {
     if (!confirm("¿Confirmar entrega?")) return;
-    fetch(`/api/deliveries/${id}/confirm`, { method: "POST" })
+    fetch("http://149.50.148.131:4000/api/deliveries/" + id + "/confirm", { method: "POST", headers: { "Authorization": "Bearer " + (localStorage.getItem("token")||""), "Content-Type": "application/json" } })
       .then(() => load())
       .catch(() => alert("Error al confirmar"));
   }
 
   function handleCancel(id: number) {
     if (!confirm("¿Cancelar entrega? Esto revertirá el stock de los productos.")) return;
-    fetch(`/api/deliveries/${id}/cancel`, { method: "POST" })
+    fetch(`http://149.50.148.131:4000/api/deliveries/${id}/cancel`, { method: "POST" })
       .then(() => load())
       .catch(e => alert("Error al cancelar: " + e));
   }
 
   function handleStatusChange(id: number, newStatus: string) {
-    fetch(`/api/deliveries/${id}`, {
+    fetch(`http://149.50.148.131:4000/api/deliveries/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: newStatus }),
