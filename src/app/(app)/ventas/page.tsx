@@ -65,6 +65,19 @@ export default function VentasPage() {
   const [statusTargetId, setStatusTargetId] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
 
+  function openStatusModal(id: number) {
+    setStatusTargetId(id);
+    setShowStatusModal(true);
+  }
+
+  function doSaveStatus(newStatusId: number) {
+    fetch(`http://149.50.148.131:4000/api/orders/${statusTargetId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order_status_id: newStatusId }),
+    }).then(() => { setShowStatusModal(false); load(); }).catch(e => alert('Error: ' + e));
+  }
+
   function load() {
     setLoading(true);
     Promise.all([
