@@ -50,6 +50,8 @@ export default function VentasPage() {
   const [filterStatus, setFilterStatus] = useState("");
   const [filterPayment, setFilterPayment] = useState("");
   const [period, setPeriod] = useState<Period>("today");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
 
   const [saleChannels, setSaleChannels] = useState<SaleChannel[]>([]);
   const [orderStatuses, setOrderStatuses] = useState<OrderStatus[]>([]);
@@ -68,7 +70,7 @@ export default function VentasPage() {
       fetchJson<SaleChannel[]>("/sale-channels"),
       fetchJson<OrderStatus[]>("/order-statuses"),
       fetchJson<PaymentStatus[]>("/payment-statuses"),
-      fetchJson<Stats>("/orders/stats?period=" + period),
+      fetchJson<Stats>("/orders/stats?period=" + period + (period === "custom" && customFrom && customTo ? "&from=" + customFrom + "&to=" + customTo : "")),
     ]).then(([o, sc, os, ps, st]) => {
       setOrders(o);
       setSaleChannels(sc);
@@ -174,6 +176,22 @@ export default function VentasPage() {
             </button>
           ))}
         </div>
+
+        {period === "custom" && (
+          <div style={{ display: "flex", gap: "8px", alignItems: "center", marginTop: "6px" }}>
+            <input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)}
+              style={{ padding: "5px 10px", borderRadius: "6px", border: "1px solid #ddd", fontSize: "12px" }} />
+            <span style={{ fontSize: "12px", color: "#888" }}>hasta</span>
+            <input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)}
+              style={{ padding: "5px 10px", borderRadius: "6px", border: "1px solid #ddd", fontSize: "12px" }} />
+            {(customFrom || customTo) && (
+              <button onClick={() => { setCustomFrom(""); setCustomTo(""); }}
+                style={{ padding: "5px 10px", borderRadius: "6px", border: "1px solid #ddd", background: "#fff", fontSize: "12px", cursor: "pointer" }}>
+                Limpiar
+              </button>
+            )}
+          </div>
+        )}
 
         <div style={{ marginLeft: "auto", display: "flex", gap: "8px", alignItems: "center" }}>
           <button onClick={() => setViewMode("cards")}
