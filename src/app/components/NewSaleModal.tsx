@@ -258,9 +258,9 @@ export default function NewSaleModal({ saleChannels, orderStatuses, paymentStatu
                     onChange={e => updateItem(idx, "quantity", Number(e.target.value))}
                     style={{ width: "50px", padding: "4px 6px", borderRadius: "6px", border: "1px solid #ddd", fontSize: "12px", textAlign: "center" }} />
                   <span style={{ color: "#888", fontSize: "12px" }}>×</span>
-                  <input type="number" value={item.unit_price}
-                    onChange={e => updateItem(idx, "unit_price", Number(e.target.value))}
-                    style={{ width: "80px", padding: "4px 6px", borderRadius: "6px", border: "1px solid #ddd", fontSize: "12px" }} />
+                  <span style={{ fontWeight: 700, minWidth: "80px", textAlign: "right", color: "#1a1a2e" }}>
+                    ${item.unit_price.toLocaleString("es-AR")}
+                  </span>
                   <span style={{ fontWeight: 700, minWidth: "70px", textAlign: "right" }}>
                     ${(item.quantity * item.unit_price).toLocaleString("es-AR")}
                   </span>
