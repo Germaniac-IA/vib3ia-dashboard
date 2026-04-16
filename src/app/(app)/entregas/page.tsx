@@ -127,12 +127,7 @@ export default function EntregasPage() {
             {stats.total_count} total · {stats.pending_count} pendientes
           </p>
         </div>
-        <button
-          onClick={() => setShowNew(true)}
-          style={{ background: "#27ae60", border: "none", borderRadius: "10px", padding: "10px 20px", color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: "14px" }}
-        >
-          ➕ Nueva Entrega
-        </button>
+        <span style={{ fontSize: "12px", color: "#888", fontStyle: "italic" }}>Las entregas se crean automáticamente al vender por canales con entrega</span>
       </div>
 
       {/* Filter tabs */}

@@ -8,7 +8,7 @@ type PaymentMethod = { id: number; name: string; is_personal: boolean; is_cash: 
 type Category = { id: number; name: string; is_active: boolean; auto_generate_sku: boolean; sku_prefix: string; sku_counter: number };
 type Brand = { id: number; name: string; is_imported: boolean; premium_level: number; is_active: boolean };
 type InputItem = { id: number; name: string; unit: string; default_cost: number; is_active: boolean };
-type SaleChannel = { id: number; name: string; is_active: boolean; sort_order: number };
+type SaleChannel = { id: number; name: string; is_active: boolean; sort_order: number; has_delivery: boolean };
 type OrderStatus = { id: number; name: string; color: string; sort_order: number; is_active: boolean };
 type PaymentStatus = { id: number; name: string; color: string; sort_order: number; is_active: boolean };
 
@@ -112,7 +112,7 @@ function PaymentMethodsABM() {
           <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "400px" }}>
             <h3 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 800 }}>{editing ? "Editar" : "Nuevo"} Método de Pago</h3>
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              <input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))}
                 placeholder="Nombre (ej: Mercado Pago)" style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
               <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", cursor: "pointer" }}>
                 <input type="checkbox" checked={form.is_cash} onChange={e => setForm(f => ({ ...f, is_cash: e.target.checked }))} />
@@ -190,7 +190,7 @@ function CategoriesABM() {
           <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "380px" }}>
             <h3 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 800 }}>{editing ? "Editar" : "Nueva"} Categoría</h3>
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              <input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))}
                 placeholder="Nombre de categoría" style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
               <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", cursor: "pointer" }}>
                 <input type="checkbox" checked={form.auto_generate_sku} onChange={e => setForm(f => ({ ...f, auto_generate_sku: e.target.checked }))} />
@@ -259,7 +259,7 @@ function BrandsABM() {
           <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "360px" }}>
             <h3 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 800 }}>{editing ? "Editar" : "Nueva"} Marca</h3>
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              <input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))}
                 placeholder="Nombre de marca" style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
               <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", cursor: "pointer" }}>
                 <input type="checkbox" checked={form.is_imported} onChange={e => setForm(f => ({ ...f, is_imported: e.target.checked }))} />
@@ -295,8 +295,8 @@ function SaleChannelsABM() {
     fetchJson<SaleChannel[]>("/sale-channels").then(setItems).catch(console.error).finally(() => setLoading(false));
   }
   useEffect(() => { load(); }, []);
-  function openNew() { setEditing(null); setForm({ name: "", sort_order: items.length + 1 }); setShowForm(true); }
-  function openEdit(c: SaleChannel) { setEditing(c); setForm({ name: c.name, sort_order: c.sort_order || 0 }); setShowForm(true); }
+  function openNew() { setEditing(null); setForm({ name: "", sort_order: items.length + 1, has_delivery: false }); setShowForm(true); }
+  function openEdit(c: SaleChannel) { setEditing(c); setForm({ name: c.name, sort_order: c.sort_order || 0, has_delivery: !!c.has_delivery }); setShowForm(true); }
   async function handleSave() {
     if (!form.name.trim()) return;
     setSaving(true);
@@ -326,11 +326,15 @@ function SaleChannelsABM() {
           <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "360px" }}>
             <h3 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 800 }}>{editing ? "Editar" : "Nuevo"} Canal de Venta</h3>
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              <input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))}
                 placeholder="Nombre (ej: Local, Domicilio, Digital)" style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
               <input type="number" value={form.sort_order} min={0}
-                onChange={e => setForm(f => ({ ...f, sort_order: Number(e.target.value) }))}
+                onChange={e => setForm(prev => ({ ...prev, sort_order: Number(e.target.value) }))}
                 placeholder="Orden" style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", cursor: "pointer", padding: "4px 0" }}>
+                <input type="checkbox" checked={form.has_delivery} onChange={e => setForm(prev => ({ ...prev, has_delivery: e.target.checked }))} style={{ width: "16px", height: "16px" }} />
+                <span style={{ fontWeight: 600 }}>🚚 Genera entregas automáticas</span>
+              </label>
             </div>
             <div style={{ display: "flex", gap: "8px", marginTop: "16px" }}>
               <button onClick={() => setShowForm(false)} style={{ flex: 1, padding: "8px", borderRadius: "8px", border: "1px solid #ddd", background: "#fff", cursor: "pointer" }}>Cancelar</button>
@@ -389,7 +393,7 @@ function OrderStatusesABM() {
           <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "360px" }}>
             <h3 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 800 }}>{editing ? "Editar" : "Nuevo"} Estado de Venta</h3>
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              <input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))}
                 placeholder="Nombre (ej: Pedido, En Proceso, Entregado)" style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <label style={{ fontSize: "13px", color: "#666" }}>Color:</label>
@@ -398,8 +402,12 @@ function OrderStatusesABM() {
                 <span style={{ fontSize: "12px", color: "#888" }}>{form.color}</span>
               </div>
               <input type="number" value={form.sort_order} min={0}
-                onChange={e => setForm(f => ({ ...f, sort_order: Number(e.target.value) }))}
+                onChange={e => setForm(prev => ({ ...prev, sort_order: Number(e.target.value) }))}
                 placeholder="Orden" style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", cursor: "pointer", padding: "4px 0" }}>
+                <input type="checkbox" checked={form.has_delivery} onChange={e => setForm(prev => ({ ...prev, has_delivery: e.target.checked }))} style={{ width: "16px", height: "16px" }} />
+                <span style={{ fontWeight: 600 }}>🚚 Genera entregas automáticas</span>
+              </label>
             </div>
             <div style={{ display: "flex", gap: "8px", marginTop: "16px" }}>
               <button onClick={() => setShowForm(false)} style={{ flex: 1, padding: "8px", borderRadius: "8px", border: "1px solid #ddd", background: "#fff", cursor: "pointer" }}>Cancelar</button>
@@ -458,7 +466,7 @@ function PaymentStatusesABM() {
           <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "360px" }}>
             <h3 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 800 }}>{editing ? "Editar" : "Nuevo"} Estado de Pago</h3>
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              <input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))}
                 placeholder="Nombre (ej: Impago, Cobrado Parcial, Cobrado)" style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <label style={{ fontSize: "13px", color: "#666" }}>Color:</label>
@@ -467,8 +475,12 @@ function PaymentStatusesABM() {
                 <span style={{ fontSize: "12px", color: "#888" }}>{form.color}</span>
               </div>
               <input type="number" value={form.sort_order} min={0}
-                onChange={e => setForm(f => ({ ...f, sort_order: Number(e.target.value) }))}
+                onChange={e => setForm(prev => ({ ...prev, sort_order: Number(e.target.value) }))}
                 placeholder="Orden" style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", cursor: "pointer", padding: "4px 0" }}>
+                <input type="checkbox" checked={form.has_delivery} onChange={e => setForm(prev => ({ ...prev, has_delivery: e.target.checked }))} style={{ width: "16px", height: "16px" }} />
+                <span style={{ fontWeight: 600 }}>🚚 Genera entregas automáticas</span>
+              </label>
             </div>
             <div style={{ display: "flex", gap: "8px", marginTop: "16px" }}>
               <button onClick={() => setShowForm(false)} style={{ flex: 1, padding: "8px", borderRadius: "8px", border: "1px solid #ddd", background: "#fff", cursor: "pointer" }}>Cancelar</button>
@@ -597,7 +609,7 @@ function InputItemsABM() {
           <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "380px" }}>
             <h3 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 800 }}>{editing ? "Editar" : "Nuevo"} Insumo</h3>
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Nombre" style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
+              <input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="Nombre" style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
               <input value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} placeholder="Unidad (ej: kg, litros)" style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                 <input type="checkbox" checked={form.requires_stock} onChange={e => setForm(f => ({ ...f, requires_stock: e.target.checked }))} style={{ width: "18px", height: "18px" }} />
