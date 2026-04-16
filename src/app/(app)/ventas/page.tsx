@@ -283,6 +283,10 @@ export default function VentasPage() {
                       style={{ padding: "5px 8px", borderRadius: "6px", border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontSize: "12px" }}>
                       ✏️
                     </button>
+                    <button onClick={() => openStatusEdit(o)} title="Editar estado"
+                      style={{ padding: "5px 8px", borderRadius: "6px", border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontSize: "12px" }}>
+                      ✏️
+                    </button>
                     <button onClick={() => handleDelete(o.id, o.order_number)} title="Eliminar"
                       style={{ padding: "5px 8px", borderRadius: "6px", border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontSize: "12px", color: "#e74c3c" }}>
                       🗑️
