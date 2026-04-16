@@ -35,14 +35,11 @@ export default function EntregasPage() {
   function load() {
     setLoading(true);
     fetchJson<Delivery[]>('/deliveries')
-      .then(r => r.json())
-      .then(data => setDeliveries(data))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+      .then(data => { setDeliveries(data); setLoading(false); })
+      .catch(e => { console.error(e); setLoading(false); });
     fetchJson<Stats>('/deliveries/stats')
-      .then(r => r.json())
       .then(data => setStats(data))
-      .catch(() => {});
+      .catch(e => console.error(e));
   }
 
   useEffect(() => { load(); }, []);
