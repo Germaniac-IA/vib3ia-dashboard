@@ -7,7 +7,8 @@ import { Card, Badge, PageTitle, Loading, Empty } from "../../components/shared/
 type PO = { id: number; order_number: string; provider_name: string; subtotal: number; discount_value: number; delivery_fee: number; total: number; status_name: string; status_color: string; payment_status_name: string; payment_status_color: string; notes: string; created_at: string; };
 type PS = { id: number; name: string; color: string; };
 type Pst = { id: number; name: string; color: string; };
-type Product = { id: number; name: string; price: number; product_type: string; stock_quantity: number; };
+type Product = { id: number; name: string; price: number; stock_quantity: number; };
+type InputItem = { id: number; name: string; unit: string; default_cost: number; stock_quantity: number; last_cost: number; };
 type Provider = { id: number; name: string; business_name: string; tax_id: string; phone: string; whatsapp: string; email: string; };
 type Stat = { total_count: number; total_amount: number; };
 type Period = "today" | "week" | "month";
@@ -135,37 +136,53 @@ function NewNPModal({ onClose, onCreated }: { onClose: () => void; onCreated: ()
   const [paymentAmount, setPaymentAmount] = useState("");
   const [providers, setProviders] = useState<Provider[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [inputItems, setInputItems] = useState<InputItem[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
   const [pSearch, setPSearch] = useState("");
+  const [iiSearch, setIiSearch] = useState("");
   const [provSearch, setProvSearch] = useState("");
   const [saving, setSaving] = useState(false);
+  const [tab, setTab] = useState<"products" | "insumos">("products");
 
-  // Quick create states
   const [showNewProvider, setShowNewProvider] = useState(false);
   const [showNewProduct, setShowNewProduct] = useState(false);
+  const [showNewInsumo, setShowNewInsumo] = useState(false);
   const [newProvider, setNewProvider] = useState({ name: "", business_name: "", tax_id: "", phone: "", whatsapp: "", email: "" });
-  const [newProduct, setNewProduct] = useState({ name: "", price: "", product_type: "supply" });
+  const [newProduct, setNewProduct] = useState({ name: "", price: "" });
+  const [newInsumo, setNewInsumo] = useState({ name: "", unit: "", default_cost: "" });
 
   useEffect(() => {
-    fetchJson<Product[]>("/products").then(setProducts).catch(console.error);
-    fetchJson<any[]>("/payment-methods").then(setPaymentMethods).catch(console.error);
+    fetchJson<Product[]>("/products").then(setProducts).catch(() => setProducts([]));
+    fetchJson<any[]>("/payment-methods").then(setPaymentMethods).catch(() => setPaymentMethods([]));
+    fetchJson<InputItem[]>("/input-items").then(setInputItems).catch(() => setInputItems([]));
   }, []);
 
   function loadProviders(q: string) {
-    fetchJson<Provider[]>("/providers?q=" + encodeURIComponent(q)).then(setProviders).catch(console.error);
+    fetchJson<Provider[]>("/providers?q=" + encodeURIComponent(q)).then(setProviders).catch(() => setProviders([]));
   }
 
   function setF(field: string, value: string) { setForm(prev => ({ ...prev, [field]: value })); }
 
-  function addProduct(p: Product) {
-    if (items.find(i => i.product_id === p.id)) return;
-    setItems([...items, { product_id: p.id, product_name: p.name, quantity: 1, unit_price: Number(p.price), product_type: p.product_type }]);
+  function addItem(item: any, type: "product" | "input_item") {
+    if (items.find(i => (type === "product" ? i.product_id : i.input_item_id) === item.id)) return;
+    const name = type === "product" ? item.name : item.name + " (" + item.unit + ")";
+    const price = type === "product" ? Number(item.price) : Number(item.default_cost);
+    setItems([...items, {
+      product_id: type === "product" ? item.id : null,
+      input_item_id: type === "input_item" ? item.id : null,
+      product_name: name,
+      quantity: 1,
+      unit_price: price,
+      item_type: type,
+    }]);
   }
 
   function remItem(idx: number) { setItems(items.filter((_, i) => i !== idx)); }
-  function updateItem(idx: number, qty: number) { const v = [...items]; v[idx].quantity = qty; setItems(v); }
+  function updateItemQty(idx: number, qty: number) { const v = [...items]; v[idx].quantity = qty; setItems(v); }
+  function updateItemPrice(idx: number, price: number) { const v = [...items]; v[idx].unit_price = price; setItems(v); }
 
   const fp = products.filter(p => !pSearch || p.name.toLowerCase().includes(pSearch.toLowerCase()));
+  const fi = inputItems.filter(i => !iiSearch || i.name.toLowerCase().includes(iiSearch.toLowerCase()));
 
   const subtotal = items.reduce((s, i) => s + i.quantity * i.unit_price, 0);
   let disc = 0;
@@ -187,16 +204,27 @@ function NewNPModal({ onClose, onCreated }: { onClose: () => void; onCreated: ()
   async function saveProduct() {
     if (!newProduct.name || !newProduct.price) { alert("Nombre y precio son obligatorios"); return; }
     try {
-      const created = await postJson<Product>("/products", { ...newProduct, price: Number(newProduct.price) });
+      const created = await postJson<Product>("/products", { name: newProduct.name, price: Number(newProduct.price) });
       setProducts(prev => [...prev, created]);
-      addProduct(created);
+      addItem(created, "product");
       setShowNewProduct(false);
-      setNewProduct({ name: "", price: "", product_type: "supply" });
+      setNewProduct({ name: "", price: "" });
+    } catch (e) { alert("Error al crear producto"); }
+  }
+
+  async function saveInsumo() {
+    if (!newInsumo.name) { alert("El nombre es obligatorio"); return; }
+    try {
+      const created = await postJson<InputItem>("/input-items", { name: newInsumo.name, unit: newInsumo.unit, default_cost: Number(newInsumo.default_cost) || 0 });
+      setInputItems(prev => [...prev, created]);
+      addItem(created, "input_item");
+      setShowNewInsumo(false);
+      setNewInsumo({ name: "", unit: "", default_cost: "" });
     } catch (e) { alert("Error al crear insumo"); }
   }
 
   async function handleSave() {
-    if (items.length === 0) { alert("Agregá al menos un insumo"); return; }
+    if (items.length === 0) { alert("Agregá al menos un producto o insumo"); return; }
     setSaving(true);
     try {
       const payload: any = {
@@ -205,14 +233,12 @@ function NewNPModal({ onClose, onCreated }: { onClose: () => void; onCreated: ()
         delivery_fee: Number(form.delivery_fee) || 0,
         discount_type: form.discount_type || undefined,
         discount_value: form.discount_value ? Number(form.discount_value) : undefined,
-        items: items.map(i => ({ product_id: i.product_id, product_name: i.product_name, quantity: i.quantity, unit_price: i.unit_price })),
+        items: items.map(i => ({ product_id: i.product_id, input_item_id: i.input_item_id, product_name: i.product_name, quantity: i.quantity, unit_price: i.unit_price })),
       };
-
       if (isPaid && paymentMethodId && paymentAmount) {
         payload.payment_method_id = Number(paymentMethodId);
         payload.payment_amount = Number(paymentAmount);
       }
-
       await postJson("/purchase-orders", payload);
       onCreated();
     } catch (e: any) { alert("Error: " + (e?.response?.data?.error || e?.message || "No se pudo crear")); }
@@ -274,41 +300,88 @@ function NewNPModal({ onClose, onCreated }: { onClose: () => void; onCreated: ()
           </div>
         )}
 
-        {/* Insumos */}
-        {!showNewProduct ? (
+        {/* Items — tabs */}
+        <div style={{ display: "flex", gap: "4px", marginBottom: "8px" }}>
+          <button onClick={() => setTab("products")} style={{ flex: 1, padding: "8px", borderRadius: "8px", border: "2px solid", borderColor: tab === "products" ? "#1a1a2e" : "#ddd", background: tab === "products" ? "#1a1a2e" : "#fff", color: tab === "products" ? "#fff" : "#666", cursor: "pointer", fontWeight: 700, fontSize: "13px" }}>📦 Productos</button>
+          <button onClick={() => setTab("insumos")} style={{ flex: 1, padding: "8px", borderRadius: "8px", border: "2px solid", borderColor: tab === "insumos" ? "#1a1a2e" : "#ddd", background: tab === "insumos" ? "#1a1a2e" : "#fff", color: tab === "insumos" ? "#fff" : "#666", cursor: "pointer", fontWeight: 700, fontSize: "13px" }}>🧴 Insumos</button>
+        </div>
+
+        {tab === "products" && !showNewProduct && (
           <div style={{ marginBottom: "12px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-              <label style={{ fontSize: "12px", fontWeight: 700, color: "#666" }}>Insumos / Productos</label>
+              <label style={{ fontSize: "12px", fontWeight: 700, color: "#666" }}>Productos</label>
               <button onClick={() => setShowNewProduct(true)} style={{ fontSize: "11px", background: "none", border: "1px solid #27ae60", color: "#27ae60", padding: "2px 8px", borderRadius: "4px", cursor: "pointer" }}>➕ Nuevo</button>
             </div>
-            <input value={pSearch} onChange={e => setPSearch(e.target.value)} placeholder="Buscar insumo..." style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
-            {pSearch && fp.slice(0, 8).map(p => (
-              <div key={p.id} onClick={() => { addProduct(p); setPSearch(""); }} style={{ padding: "8px 12px", borderBottom: "1px solid #f0", cursor: "pointer", display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
-                <span>{p.name} <span style={{ fontSize: "11px", color: "#888" }}>({p.product_type === "supply" ? "insumo" : p.product_type === "raw_material" ? "materia prima" : "producto"})</span></span>
+            <input value={pSearch} onChange={e => setPSearch(e.target.value)} placeholder="Buscar producto..." style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
+            {pSearch && fp.slice(0, 6).map(p => (
+              <div key={p.id} onClick={() => { addItem(p, "product"); setPSearch(""); }} style={{ padding: "8px 12px", borderBottom: "1px solid #f0", cursor: "pointer", display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
+                <span>{p.name}</span>
                 <span style={{ fontWeight: 700, color: "#888" }}>${Number(p.price).toLocaleString("es-AR")}</span>
               </div>
             ))}
-            {items.map((item, idx) => (
-              <div key={idx} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px 0", borderBottom: "1px solid #f0", fontSize: "13px" }}>
-                <span style={{ flex: 1 }}>{item.product_name}</span>
-                <input type="number" value={item.quantity} min={1} onChange={e => updateItem(idx, Number(e.target.value))} style={{ width: "50px", padding: "4px", borderRadius: "6px", border: "1px solid #ddd", fontSize: "12px", textAlign: "center" }} />
-                <span>${(item.quantity * item.unit_price).toLocaleString("es-AR")}</span>
-                <button onClick={() => remItem(idx)} style={{ background: "none", border: "none", color: "#e74c3c", cursor: "pointer", fontSize: "14px" }}>✕</button>
-              </div>
-            ))}
           </div>
-        ) : (
+        )}
+
+        {tab === "products" && showNewProduct && (
           <div style={{ marginBottom: "12px", padding: "12px", background: "#f8fff8", borderRadius: "8px", border: "1px solid #27ae60" }}>
-            <div style={{ fontWeight: 700, fontSize: "13px", marginBottom: "8px" }}>➕ Nuevo Insumo</div>
+            <div style={{ fontWeight: 700, fontSize: "13px", marginBottom: "8px" }}>➕ Nuevo Producto</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-              <Input label="Nombre *" value={newProduct.name} onChange={v => setNewProduct(p => ({ ...p, name: v }))} placeholder="ej: Rosas rojas" />
-              <Input label="Precio Unitario *" value={newProduct.price} onChange={v => setNewProduct(p => ({ ...p, price: v }))} placeholder="0.00" type="number" />
-              <Sel label="Tipo" value={newProduct.product_type} onChange={v => setNewProduct(p => ({ ...p, product_type: v }))} options={[{ id: "supply", name: "Insumo" }, { id: "raw_material", name: "Materia Prima" }, { id: "finished", name: "Producto Terminado" }]} />
+              <Input label="Nombre *" value={newProduct.name} onChange={v => setNewProduct({ name: v, price: newProduct.price })} placeholder="ej: Ramo de rosas" />
+              <Input label="Precio *" value={newProduct.price} onChange={v => setNewProduct({ name: newProduct.name, price: v })} placeholder="0.00" type="number" />
             </div>
             <div style={{ display: "flex", gap: "6px", marginTop: "8px" }}>
               <button onClick={() => setShowNewProduct(false)} style={{ flex: 1, padding: "6px", borderRadius: "6px", border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontSize: "12px" }}>Cancelar</button>
-              <button onClick={saveProduct} style={{ flex: 2, padding: "6px", borderRadius: "6px", border: "none", background: "#27ae60", color: "#fff", cursor: "pointer", fontSize: "12px", fontWeight: 700 }}>✅ Crear e agregar</button>
+              <button onClick={saveProduct} style={{ flex: 2, padding: "6px", borderRadius: "6px", border: "none", background: "#27ae60", color: "#fff", cursor: "pointer", fontSize: "12px", fontWeight: 700 }}>✅ Crear</button>
             </div>
+          </div>
+        )}
+
+        {tab === "insumos" && !showNewInsumo && (
+          <div style={{ marginBottom: "12px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+              <label style={{ fontSize: "12px", fontWeight: 700, color: "#666" }}>Insumos</label>
+              <button onClick={() => setShowNewInsumo(true)} style={{ fontSize: "11px", background: "none", border: "1px solid #27ae60", color: "#27ae60", padding: "2px 8px", borderRadius: "4px", cursor: "pointer" }}>➕ Nuevo</button>
+            </div>
+            <input value={iiSearch} onChange={e => setIiSearch(e.target.value)} placeholder="Buscar insumo..." style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
+            {iiSearch && fi.slice(0, 6).map(i => (
+              <div key={i.id} onClick={() => { addItem(i, "input_item"); setIiSearch(""); }} style={{ padding: "8px 12px", borderBottom: "1px solid #f0", cursor: "pointer", display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
+                <span>{i.name} <span style={{ fontSize: "11px", color: "#888" }}>({i.unit})</span></span>
+                <span style={{ fontWeight: 700, color: "#888" }}>${Number(i.default_cost).toLocaleString("es-AR")}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {tab === "insumos" && showNewInsumo && (
+          <div style={{ marginBottom: "12px", padding: "12px", background: "#f8fff8", borderRadius: "8px", border: "1px solid #27ae60" }}>
+            <div style={{ fontWeight: 700, fontSize: "13px", marginBottom: "8px" }}>➕ Nuevo Insumo</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
+              <Input label="Nombre *" value={newInsumo.name} onChange={v => setNewInsumo({ ...newInsumo, name: v })} placeholder="ej: Tela de rosas" />
+              <Input label="Unidad" value={newInsumo.unit} onChange={v => setNewInsumo({ ...newInsumo, unit: v })} placeholder="ej: Metro" />
+              <Input label="Costo default" value={newInsumo.default_cost} onChange={v => setNewInsumo({ ...newInsumo, default_cost: v })} placeholder="0.00" type="number" />
+            </div>
+            <div style={{ display: "flex", gap: "6px", marginTop: "8px" }}>
+              <button onClick={() => setShowNewInsumo(false)} style={{ flex: 1, padding: "6px", borderRadius: "6px", border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontSize: "12px" }}>Cancelar</button>
+              <button onClick={saveInsumo} style={{ flex: 2, padding: "6px", borderRadius: "6px", border: "none", background: "#27ae60", color: "#fff", cursor: "pointer", fontSize: "12px", fontWeight: 700 }}>✅ Crear</button>
+            </div>
+          </div>
+        )}
+
+        {/* Items agregados */}
+        {items.length > 0 && (
+          <div style={{ marginBottom: "12px", background: "#f8f8f8", borderRadius: "8px", padding: "8px" }}>
+            <div style={{ fontSize: "12px", fontWeight: 700, color: "#666", marginBottom: "4px" }}>Items agregados ({items.length})</div>
+            {items.map((item, idx) => (
+              <div key={idx} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "4px 0", borderBottom: "1px solid #eee", fontSize: "13px" }}>
+                <span style={{ fontSize: "12px" }}>{item.item_type === "product" ? "📦" : "🧴"}</span>
+                <span style={{ flex: 1 }}>{item.product_name}</span>
+                <input type="number" value={item.quantity} min={1} onChange={e => updateItemQty(idx, Number(e.target.value))} style={{ width: "50px", padding: "4px", borderRadius: "6px", border: "1px solid #ddd", fontSize: "12px", textAlign: "center" }} />
+                <span style={{ fontWeight: 700 }}>$</span>
+                <input type="number" value={item.unit_price} onChange={e => updateItemPrice(idx, Number(e.target.value))} style={{ width: "70px", padding: "4px", borderRadius: "6px", border: "1px solid #ddd", fontSize: "12px", textAlign: "right" }} />
+                <span style={{ fontWeight: 700, minWidth: "80px", textAlign: "right" }}>${(item.quantity * item.unit_price).toLocaleString("es-AR")}</span>
+                <button onClick={() => remItem(idx)} style={{ background: "none", border: "none", color: "#e74c3c", cursor: "pointer", fontSize: "14px" }}>✕</button>
+              </div>
+            ))}
           </div>
         )}
 
@@ -396,7 +469,7 @@ function NPDetailModal({ orderId, onClose, onUpdated }: any) {
           {Number(order.discount_value) > 0 && <div style={{ background: "#fde8e8", borderRadius: "8px", padding: "10px", textAlign: "center" }}><div style={{ fontSize: "11px", color: "#888" }}>Descuento</div><div style={{ fontWeight: 800, color: "#e74c3c" }}>-${Number(order.discount_value).toLocaleString("es-AR")}</div></div>}
           <div style={{ background: "#1a1a2e", borderRadius: "8px", padding: "10px", textAlign: "center", color: "#fff" }}><div style={{ fontSize: "11px", color: "#aaa" }}>Total</div><div style={{ fontWeight: 800 }}>${Number(order.total).toLocaleString("es-AR")}</div></div>
         </div>
-        <div style={{ fontWeight: 700, fontSize: "13px", marginBottom: "6px" }}>Insumos</div>
+        <div style={{ fontWeight: 700, fontSize: "13px", marginBottom: "6px" }}>Items</div>
         {order.items?.map((item: any, idx: number) => (
           <div key={idx} style={{ display: "flex", justifyContent: "space-between", padding: "8px", borderBottom: "1px solid #f0", fontSize: "13px" }}>
             <span>{item.quantity} × {item.product_name}</span>
