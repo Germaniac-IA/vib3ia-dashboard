@@ -28,6 +28,7 @@ export default function EntregasPage() {
   const [stats, setStats] = useState<Stats>({ pending_count: 0, in_transit_count: 0, delivered_count: 0, cancelled_count: 0, total_count: 0 });
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState("");
+  const [viewMode, setViewMode] = useState<"list" | "cards">("list");
   const [showNew, setShowNew] = useState(false);
   const [newForm, setNewForm] = useState({ order_id: "", address: "", scheduled_date: "", notes: "", delivery_fee: "" });
   const [creating, setCreating] = useState(false);
@@ -119,8 +120,14 @@ export default function EntregasPage() {
     <div style={{ maxWidth: "900px", margin: "0 auto" }}>
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "10px" }}>
-        <div>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <h1 style={{ margin: 0, fontSize: "22px", fontWeight: 900 }}>🚚 Entregas</h1>
+          <div style={{ display: "flex", gap: "4px", background: "#e0e0e0", borderRadius: "8px", padding: "3px" }}>
+            <button onClick={() => setViewMode("list")} title="Lista" style={{ padding: "4px 10px", borderRadius: "6px", border: "none", cursor: "pointer", fontSize: "13px", background: viewMode === "list" ? "#1a1a2e" : "transparent", color: viewMode === "list" ? "#fff" : "#555", fontWeight: 600 }}>☰</button>
+            <button onClick={() => setViewMode("cards")} title="Tarjetas" style={{ padding: "4px 10px", borderRadius: "6px", border: "none", cursor: "pointer", fontSize: "13px", background: viewMode === "cards" ? "#1a1a2e" : "transparent", color: viewMode === "cards" ? "#fff" : "#555", fontWeight: 600 }}>⊞</button>
+          </div>
+        </div>
+        <div>
           <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#888" }}>
             {stats.total_count} total · {stats.pending_count} pendientes
           </p>
@@ -158,6 +165,34 @@ export default function EntregasPage() {
       ) : filtered.length === 0 ? (
         <div style={{ background: "#fff", borderRadius: "12px", padding: "40px", textAlign: "center", color: "#888" }}>
           No hay entregas{activeFilter ? ` con estado "${activeFilter}"` : ""}
+        </div>
+      ) : viewMode === "cards" ? (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "12px" }}>
+          {filtered.map(d => {
+            const delay = getDelayDays(d.scheduled_date);
+            const statusColor = getStatusColor(d.status);
+            return (
+              <div key={d.id} style={{ background: "#fff", borderRadius: "12px", padding: "16px", boxShadow: "0 1px 4px rgba(0,0,0,0.08)", border: "1px solid #f0f0f0" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: "15px", color: "#1a1a2e" }}>{d.order_number}</div>
+                    <div style={{ fontSize: "12px", color: "#888", marginTop: "2px" }}>{d.contact_name || "Sin cliente"}</div>
+                  </div>
+                  <span style={{ background: statusColor, color: "#fff", borderRadius: "12px", padding: "3px 10px", fontSize: "11px", fontWeight: 700 }}>{d.status}</span>
+                </div>
+                <div style={{ fontSize: "13px", color: "#555", marginBottom: "6px" }}>📍 {d.address || "—"}</div>
+                <div style={{ fontSize: "13px", color: "#555", marginBottom: "6px" }}>📅 {d.scheduled_date ? new Date(d.scheduled_date + "T00:00:00").toLocaleDateString("es-AR") : "—"} {delay ? <span style={{ color: "#e74c3c", fontWeight: 700 }}> +{delay}d</span> : ""}</div>
+                <div style={{ fontWeight: 700, fontSize: "16px", marginBottom: "12px", color: "#1a1a2e" }}>${Number(d.order_total || 0).toLocaleString("es-AR")}</div>
+                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                  {d.status === "Pendiente" && <button onClick={() => handleStatusChange(d.id, "En camino")} style={{ background: "#3498db", border: "none", borderRadius: "6px", padding: "5px 10px", color: "#fff", cursor: "pointer", fontSize: "12px" }}>🚚</button>}
+                  {d.status === "Pendiente" && <button onClick={() => handleConfirm(d.id)} style={{ background: "#27ae60", border: "none", borderRadius: "6px", padding: "5px 10px", color: "#fff", cursor: "pointer", fontSize: "12px" }}>✓</button>}
+                  {(d.status === "Pendiente" || d.status === "En camino") && <button onClick={() => handleCancel(d.id)} style={{ background: "#e74c3c", border: "none", borderRadius: "6px", padding: "5px 10px", color: "#fff", cursor: "pointer", fontSize: "12px" }}>✕</button>}
+                  {d.status === "Entregado" && <span style={{ color: "#27ae60", fontSize: "18px" }}>✓</span>}
+                  {d.status === "Cancelado" && <span style={{ color: "#e74c3c", fontSize: "18px" }}>✕</span>}
+                </div>
+              </div>
+            );
+          })}
         </div>
       ) : (
         <div style={{ background: "#fff", borderRadius: "12px", overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
