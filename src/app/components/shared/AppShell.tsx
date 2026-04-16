@@ -70,13 +70,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <h3 style={{ margin: "0 0 16px", fontSize: "18px", fontWeight: 800 }}>🔒 Cerrar Caja</h3>
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
               <div><label style={{ fontSize: "12px", fontWeight: 700, color: "#666" }}>Total efectivo</label>
-                <input type="number" value={closeForm.total_cash} onChange={e => setCloseForm(f => ({ ...f, total_cash: e.target.value }))} placeholder="0.00" style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} /></div>
+                <input type="number" value={closeForm.total_cash} onChange={e => setCloseForm(prev => ({ ...f, total_cash: e.target.value }))} placeholder="0.00" style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} /></div>
               <div><label style={{ fontSize: "12px", fontWeight: 700, color: "#666" }}>Total digital</label>
-                <input type="number" value={closeForm.total_digital} onChange={e => setCloseForm(f => ({ ...f, total_digital: e.target.value }))} placeholder="0.00" style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} /></div>
+                <input type="number" value={closeForm.total_digital} onChange={e => setCloseForm(prev => ({ ...f, total_digital: e.target.value }))} placeholder="0.00" style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} /></div>
               <div><label style={{ fontSize: "12px", fontWeight: 700, color: "#666" }}>Total otros</label>
-                <input type="number" value={closeForm.total_other} onChange={e => setCloseForm(f => ({ ...f, total_other: e.target.value }))} placeholder="0.00" style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} /></div>
+                <input type="number" value={closeForm.total_other} onChange={e => setCloseForm(prev => ({ ...f, total_other: e.target.value }))} placeholder="0.00" style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} /></div>
               <div><label style={{ fontSize: "12px", fontWeight: 700, color: "#666" }}>Notas de cierre</label>
-                <textarea value={closeForm.notes} onChange={e => setCloseForm(f => ({ ...f, notes: e.target.value }))} placeholder="Observaciones..." style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px", minHeight: "60px", resize: "vertical" }} /></div>
+                <textarea value={closeForm.notes} onChange={e => setCloseForm(prev => ({ ...f, notes: e.target.value }))} placeholder="Observaciones..." style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px", minHeight: "60px", resize: "vertical" }} /></div>
             </div>
             <div style={{ display: "flex", gap: "8px", marginTop: "16px" }}>
               <button onClick={() => setShowClose(false)} style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "1px solid #ddd", background: "#fff", cursor: "pointer" }}>Cancelar</button>
