@@ -61,6 +61,8 @@ export default function VentasPage() {
   const [detailId, setDetailId] = useState<number | null>(null);
   const [editId, setEditId] = useState<number | null>(null);
   const [showNew, setShowNew] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [statusTargetId, setStatusTargetId] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
 
   function load() {
@@ -283,9 +285,9 @@ export default function VentasPage() {
                       style={{ padding: "5px 8px", borderRadius: "6px", border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontSize: "12px" }}>
                       ✏️
                     </button>
-                    <button onClick={() => openStatusEdit(o)} title="Editar estado"
+                    <button onClick={() => openStatusModal(o.id)} title="Editar estado"
                       style={{ padding: "5px 8px", borderRadius: "6px", border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontSize: "12px" }}>
-                      ✏️
+                      🚚
                     </button>
                     <button onClick={() => handleDelete(o.id, o.order_number)} title="Eliminar"
                       style={{ padding: "5px 8px", borderRadius: "6px", border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontSize: "12px", color: "#e74c3c" }}>
@@ -381,4 +383,24 @@ export default function VentasPage() {
       )}
     </div>
   );
+
+      {/* Status edit modal */}
+      {showStatusModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }} onClick={e => { if (e.target === e.currentTarget) setShowStatusModal(false); }}>
+          <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "380px" }}>
+            <h3 style={{ margin: "0 0 16px", fontSize: "18px", fontWeight: 800 }}>🚚 Cambiar Estado</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "16px" }}>
+              {orderStatuses.map(s => (
+                <div key={s.id} onClick={() => doSaveStatus(s.id)}
+                  style={{ display: "flex", alignItems: "center", gap: "10px", padding: "12px 16px", borderRadius: "10px", border: "2px solid #e0e0e0", cursor: "pointer" }}>
+                  <span style={{ width: "14px", height: "14px", borderRadius: "50%", background: s.color || "#888", flexShrink: 0 }} />
+                  <span style={{ fontWeight: 600, fontSize: "14px" }}>{s.name}</span>
+                </div>
+              ))}
+            </div>
+            <button onClick={() => setShowStatusModal(false)} style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontSize: "14px" }}>Cancelar</button>
+          </div>
+        </div>
+      )}
+
 }
