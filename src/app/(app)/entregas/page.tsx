@@ -127,10 +127,14 @@ export default function EntregasPage() {
             <button onClick={() => setViewMode("cards")} title="Tarjetas" style={{ padding: "4px 10px", borderRadius: "6px", border: "none", cursor: "pointer", fontSize: "13px", background: viewMode === "cards" ? "#1a1a2e" : "transparent", color: viewMode === "cards" ? "#fff" : "#555", fontWeight: 600 }}>⊞</button>
           </div>
         </div>
-        <div>
-          <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#888" }}>
-            {stats.total_count} total · {stats.pending_count} pendientes
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <p style={{ margin: 0, fontSize: "13px", color: "#888" }}>
+            {stats.total_count} total
           </p>
+          <div style={{ display: "flex", gap: "4px", background: "#e0e0e0", borderRadius: "8px", padding: "3px" }}>
+            <button onClick={() => setViewMode("list")} title="Lista" style={{ padding: "4px 10px", borderRadius: "6px", border: "none", cursor: "pointer", fontSize: "13px", background: viewMode === "list" ? "#1a1a2e" : "transparent", color: viewMode === "list" ? "#fff" : "#555", fontWeight: 600 }}>☰</button>
+            <button onClick={() => setViewMode("cards")} title="Tarjetas" style={{ padding: "4px 10px", borderRadius: "6px", border: "none", cursor: "pointer", fontSize: "13px", background: viewMode === "cards" ? "#1a1a2e" : "transparent", color: viewMode === "cards" ? "#fff" : "#555", fontWeight: 600 }}>⊞</button>
+          </div>
         </div>
         <button onClick={() => setShowNew(true)} style={{ background: "#27ae60", border: "none", borderRadius: "10px", padding: "10px 20px", color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: "14px" }}>
           + Nueva Entrega
