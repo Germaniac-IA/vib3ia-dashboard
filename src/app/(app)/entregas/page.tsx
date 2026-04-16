@@ -29,6 +29,10 @@ export default function EntregasPage() {
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "cards">("list");
+  const [showStatusEdit, setShowStatusEdit] = useState<number | null>(null);
+  const [showAddressEdit, setShowAddressEdit] = useState<number | null>(null);
+  const [editStatus, setEditStatus] = useState("");
+  const [editAddress, setEditAddress] = useState({ address: "", notes: "" });
   const [showNew, setShowNew] = useState(false);
   const [newForm, setNewForm] = useState({ order_id: "", address: "", scheduled_date: "", notes: "", delivery_fee: "" });
   const [creating, setCreating] = useState(false);
@@ -80,6 +84,24 @@ export default function EntregasPage() {
     fetch(`http://149.50.148.131:4000/api/deliveries/${id}/cancel`, { method: "POST" })
       .then(() => load())
       .catch(e => alert("Error al cancelar: " + e));
+  }
+
+  function openStatusEdit(d: Delivery) { setShowStatusEdit(d.id); setEditStatus(d.status); }
+  function saveStatusEdit(id: number) {
+    fetch(`http://149.50.148.131:4000/api/deliveries/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: editStatus }),
+    }).then(() => { setShowStatusEdit(null); load(); }).catch(e => alert("Error: " + e));
+  }
+
+  function openAddressEdit(d: Delivery) { setShowAddressEdit(d.id); setEditAddress({ address: d.address || "", notes: d.notes || "" }); }
+  function saveAddressEdit(id: number) {
+    fetch(`http://149.50.148.131:4000/api/deliveries/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ address: editAddress.address, notes: editAddress.notes }),
+    }).then(() => { setShowAddressEdit(null); load(); }).catch(e => alert("Error: " + e));
   }
 
   function handleStatusChange(id: number, newStatus: string) {
@@ -183,12 +205,12 @@ export default function EntregasPage() {
                 <div style={{ fontSize: "13px", color: "#555", marginBottom: "6px" }}>📍 {d.address || "—"}</div>
                 <div style={{ fontSize: "13px", color: "#555", marginBottom: "6px" }}>📅 {d.scheduled_date ? new Date(d.scheduled_date + "T00:00:00").toLocaleDateString("es-AR") : "—"} {delay ? <span style={{ color: "#e74c3c", fontWeight: 700 }}> +{delay}d</span> : ""}</div>
                 <div style={{ fontWeight: 700, fontSize: "16px", marginBottom: "12px", color: "#1a1a2e" }}>${Number(d.order_total || 0).toLocaleString("es-AR")}</div>
-                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                  {d.status === "Pendiente" && <button onClick={() => handleStatusChange(d.id, "En camino")} style={{ background: "#3498db", border: "none", borderRadius: "6px", padding: "5px 10px", color: "#fff", cursor: "pointer", fontSize: "12px" }}>🚚</button>}
-                  {d.status === "Pendiente" && <button onClick={() => handleConfirm(d.id)} style={{ background: "#27ae60", border: "none", borderRadius: "6px", padding: "5px 10px", color: "#fff", cursor: "pointer", fontSize: "12px" }}>✓</button>}
-                  {(d.status === "Pendiente" || d.status === "En camino") && <button onClick={() => handleCancel(d.id)} style={{ background: "#e74c3c", border: "none", borderRadius: "6px", padding: "5px 10px", color: "#fff", cursor: "pointer", fontSize: "12px" }}>✕</button>}
-                  {d.status === "Entregado" && <span style={{ color: "#27ae60", fontSize: "18px" }}>✓</span>}
-                  {d.status === "Cancelado" && <span style={{ color: "#e74c3c", fontSize: "18px" }}>✕</span>}
+                <div style={{ display: "flex", gap: "5px", flexWrap: "wrap", marginTop: "8px", borderTop: "1px solid #f0f0f0", paddingTop: "10px" }}>
+                  <button onClick={() => openStatusEdit(d)} style={{ background: "#1a1a2e", border: "none", borderRadius: "6px", padding: "5px 10px", color: "#fff", cursor: "pointer", fontSize: "12px", fontWeight: 600 }}>✏️ Estado</button>
+                  <button onClick={() => openAddressEdit(d)} style={{ background: "#8e44ad", border: "none", borderRadius: "6px", padding: "5px 10px", color: "#fff", cursor: "pointer", fontSize: "12px", fontWeight: 600 }}>📍 Domicilio</button>
+                  {d.status !== "Entregado" && d.status !== "Cancelado" && <button onClick={() => handleConfirm(d.id)} style={{ background: "#27ae60", border: "none", borderRadius: "6px", padding: "5px 10px", color: "#fff", cursor: "pointer", fontSize: "12px", fontWeight: 600 }}>✓ Entregado</button>}
+                  {d.status === "Entregado" && <span style={{ color: "#27ae60", fontSize: "12px", fontWeight: 600 }}>✓ Entregado</span>}
+                  {d.status === "Cancelado" && <span style={{ color: "#e74c3c", fontSize: "12px", fontWeight: 600 }}>✕ Cancelado</span>}
                 </div>
               </div>
             );
@@ -251,21 +273,13 @@ export default function EntregasPage() {
                       )}
                     </td>
                     <td style={{ padding: "10px 12px", textAlign: "right", whiteSpace: "nowrap" }}>
-                      {d.status === "Pendiente" && (
-                        <>
-                          <button onClick={() => handleStatusChange(d.id, "En camino")} title="En camino" style={{ background: "#3498db", border: "none", borderRadius: "6px", padding: "4px 8px", color: "#fff", cursor: "pointer", fontSize: "11px", marginRight: "4px" }}>🚚</button>
-                          <button onClick={() => handleConfirm(d.id)} title="Confirmar" style={{ background: "#27ae60", border: "none", borderRadius: "6px", padding: "4px 8px", color: "#fff", cursor: "pointer", fontSize: "11px", marginRight: "4px" }}>✓</button>
-                          <button onClick={() => handleCancel(d.id)} title="Cancelar" style={{ background: "#e74c3c", border: "none", borderRadius: "6px", padding: "4px 8px", color: "#fff", cursor: "pointer", fontSize: "11px" }}>✕</button>
-                        </>
-                      )}
-                      {d.status === "En camino" && (
-                        <>
-                          <button onClick={() => handleConfirm(d.id)} title="Confirmar" style={{ background: "#27ae60", border: "none", borderRadius: "6px", padding: "4px 8px", color: "#fff", cursor: "pointer", fontSize: "11px", marginRight: "4px" }}>✓</button>
-                          <button onClick={() => handleCancel(d.id)} title="Cancelar" style={{ background: "#e74c3c", border: "none", borderRadius: "6px", padding: "4px 8px", color: "#fff", cursor: "pointer", fontSize: "11px" }}>✕</button>
-                        </>
-                      )}
-                      {d.status === "Entregado" && <span style={{ color: "#27ae60", fontSize: "18px" }}>✓</span>}
-                      {d.status === "Cancelado" && <span style={{ color: "#e74c3c", fontSize: "18px" }}>✕</span>}
+                      <div style={{ display: "flex", gap: "4px", flexWrap: "nowrap" }}>
+                    <button onClick={() => openStatusEdit(d)} title="Editar estado" style={{ background: "#1a1a2e", border: "none", borderRadius: "6px", padding: "4px 8px", color: "#fff", cursor: "pointer", fontSize: "11px", fontWeight: 600, whiteSpace: "nowrap" }}>✏️</button>
+                    <button onClick={() => openAddressEdit(d)} title="Editar domicilio" style={{ background: "#8e44ad", border: "none", borderRadius: "6px", padding: "4px 8px", color: "#fff", cursor: "pointer", fontSize: "11px", fontWeight: 600 }}>📍</button>
+                    {d.status !== "Entregado" && d.status !== "Cancelado" && <button onClick={() => handleConfirm(d.id)} title="Marcar entregado" style={{ background: "#27ae60", border: "none", borderRadius: "6px", padding: "4px 8px", color: "#fff", cursor: "pointer", fontSize: "11px", fontWeight: 600 }}>✓</button>}
+                    {d.status === "Entregado" && <span style={{ color: "#27ae60", fontSize: "16px" }}>✓</span>}
+                    {d.status === "Cancelado" && <span style={{ color: "#e74c3c", fontSize: "16px" }}>✕</span>}
+                  </div>
                     </td>
                   </tr>
                 );
@@ -274,6 +288,58 @@ export default function EntregasPage() {
           </table>
         </div>
       )}
+
+      {/* Status Edit Modal */}
+      {showStatusEdit && (() => {
+        const d = filtered.find(x => x.id === showStatusEdit);
+        return d ? (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }} onClick={e => { if (e.target === e.currentTarget) setShowStatusEdit(null); }}>
+          <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "360px" }}>
+            <h3 style={{ margin: "0 0 12px", fontSize: "16px", fontWeight: 800 }}>✏️ Cambiar Estado</h3>
+            <div style={{ fontSize: "13px", color: "#888", marginBottom: "12px" }}>{d.order_number} — {d.contact_name || "Sin cliente"}</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "16px" }}>
+              {["Pendiente", "En camino", "Entregado", "Cancelado"].map(s => (
+                <label key={s} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 12px", borderRadius: "8px", border: editStatus === s ? "2px solid #27ae60" : "1px solid #ddd", cursor: "pointer", background: editStatus === s ? "#f0fff4" : "#fff" }}>
+                  <input type="radio" name="status" value={s} checked={editStatus === s} onChange={() => setEditStatus(s)} />
+                  <span style={{ fontWeight: 600 }}>{s}</span>
+                </label>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button onClick={() => setShowStatusEdit(null)} style={{ flex: 1, padding: "8px", borderRadius: "8px", border: "1px solid #ddd", background: "#fff", cursor: "pointer" }}>Cancelar</button>
+              <button onClick={() => saveStatusEdit(showStatusEdit)} style={{ flex: 2, padding: "8px", borderRadius: "8px", border: "none", background: "#27ae60", color: "#fff", cursor: "pointer", fontWeight: 700 }}>Guardar</button>
+            </div>
+          </div>
+        </div>
+        ) : null;
+      })()}
+
+      {/* Address Edit Modal */}
+      {showAddressEdit && (() => {
+        const d = filtered.find(x => x.id === showAddressEdit);
+        return d ? (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }} onClick={e => { if (e.target === e.currentTarget) setShowAddressEdit(null); }}>
+          <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "400px" }}>
+            <h3 style={{ margin: "0 0 12px", fontSize: "16px", fontWeight: 800 }}>📍 Editar Domicilio</h3>
+            <div style={{ fontSize: "13px", color: "#888", marginBottom: "12px" }}>{d.order_number} — {d.contact_name || "Sin cliente"}</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <div>
+                <label style={{ fontSize: "12px", fontWeight: 700, color: "#666" }}>Dirección</label>
+                <input type="text" value={editAddress.address} onChange={e => setEditAddress(prev => ({ ...prev, address: e.target.value }))} style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
+              </div>
+              <div>
+                <label style={{ fontSize: "12px", fontWeight: 700, color: "#666" }}>Notas</label>
+                <textarea value={editAddress.notes} onChange={e => setEditAddress(prev => ({ ...prev, notes: e.target.value }))} style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px", minHeight: "60px", resize: "vertical" }} />
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: "8px", marginTop: "16px" }}>
+              <button onClick={() => setShowAddressEdit(null)} style={{ flex: 1, padding: "8px", borderRadius: "8px", border: "1px solid #ddd", background: "#fff", cursor: "pointer" }}>Cancelar</button>
+              <button onClick={() => saveAddressEdit(showAddressEdit)} style={{ flex: 2, padding: "8px", borderRadius: "8px", border: "none", background: "#8e44ad", color: "#fff", cursor: "pointer", fontWeight: 700 }}>Guardar</button>
+            </div>
+          </div>
+        </div>
+        ) : null;
+      })()}
 
       {/* New Delivery Modal */}
       {showNew && (
