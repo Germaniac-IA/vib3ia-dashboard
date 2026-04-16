@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchJson, postJson, putJson, deleteJson, money } from "../../lib";
-import { Card, Badge, IconButton, Input, Select, PageTitle, Loading, Empty } from "../../components/shared/UI";
-import OrderDetailModal from "../../components/OrderDetailModal";
+import { fetchJson, postJson, deleteJson } from "../../lib";
+import { Card, Badge, IconButton, PageTitle, Loading, Empty } from "../../components/shared/UI";
+import OrderDetailReadOnly from "../../components/OrderDetailReadOnly";
 import NewSaleModal from "../../components/NewSaleModal";
-import type {
-  OrderDetail, Product, Contact, SaleChannel, OrderStatus, PaymentStatus, User
-} from "../../types";
+import EditSaleModal from "../../components/EditSaleModal";
+import type { SaleChannel, OrderStatus, PaymentStatus } from "../../types";
 
 type OrderRow = {
   id: number;
@@ -30,10 +29,17 @@ type OrderRow = {
   created_at: string;
 };
 
-const overlayStyle: React.CSSProperties = {
-  position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 50,
-  display: "flex", alignItems: "center", justifyContent: "center", padding: "20px"
+type Stats = {
+  total_count: number;
+  total_revenue: number;
+  total_collected: number;
+  total_pending: number;
+  best_seller: { seller_name: string; sale_count: number; revenue: number } | null;
+  payment_breakdown: Array<{ method_name: string; order_count: number; collected: number }>;
+  by_day: Array<{ day: string; order_count: number; day_revenue: number }>;
 };
+
+type Period = "today" | "week" | "month" | "custom";
 
 export default function VentasPage() {
   const [orders, setOrders] = useState<OrderRow[]>([]);
@@ -43,12 +49,15 @@ export default function VentasPage() {
   const [filterChannel, setFilterChannel] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [filterPayment, setFilterPayment] = useState("");
+  const [period, setPeriod] = useState<Period>("today");
 
   const [saleChannels, setSaleChannels] = useState<SaleChannel[]>([]);
   const [orderStatuses, setOrderStatuses] = useState<OrderStatus[]>([]);
   const [paymentStatuses, setPaymentStatuses] = useState<PaymentStatus[]>([]);
+  const [stats, setStats] = useState<Stats | null>(null);
 
   const [detailId, setDetailId] = useState<number | null>(null);
+  const [editId, setEditId] = useState<number | null>(null);
   const [showNew, setShowNew] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -59,18 +68,28 @@ export default function VentasPage() {
       fetchJson<SaleChannel[]>("/sale-channels"),
       fetchJson<OrderStatus[]>("/order-statuses"),
       fetchJson<PaymentStatus[]>("/payment-statuses"),
-    ]).then(([o, sc, os, ps]) => {
+      fetchJson<Stats>("/orders/stats?period=" + period),
+    ]).then(([o, sc, os, ps, st]) => {
       setOrders(o);
       setSaleChannels(sc);
       setOrderStatuses(os);
       setPaymentStatuses(ps);
+      setStats(st);
     }).catch(console.error).finally(() => setLoading(false));
   }
 
-  useEffect(() => { load(); }, [refreshKey]);
+  useEffect(() => { load(); }, [refreshKey, period]);
 
-  function handleUpdated() { setDetailId(null); setRefreshKey(k => k + 1); }
+  function handleUpdated() { setEditId(null); setDetailId(null); setRefreshKey(k => k + 1); }
   function handleCreated() { setShowNew(false); setRefreshKey(k => k + 1); }
+
+  async function handleDelete(id: number, orderNumber: string) {
+    if (!confirm(`¿Eliminar la venta ${orderNumber}? Esta acción no se puede deshacer.`)) return;
+    try {
+      await deleteJson("/orders/" + id);
+      setRefreshKey(k => k + 1);
+    } catch (e) { console.error(e); alert("No se pudo eliminar"); }
+  }
 
   const filtered = orders.filter(o => {
     if (search && !o.contact_name?.toLowerCase().includes(search.toLowerCase()) &&
@@ -83,45 +102,112 @@ export default function VentasPage() {
   });
 
   const itemCount = (o: OrderRow) => o.items?.reduce((s, i) => s + (i.quantity || 1), 0) ?? 0;
+  const pendingAmount = (o: OrderRow) => {
+    const paid = Number(o.payment_paid || 0);
+    const total = Number(o.total || 0);
+    return total - paid;
+  };
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px", flexWrap: "wrap" }}>
+      {/* Header */}
+      <div style={{ marginBottom: "16px" }}>
         <PageTitle>🧾 Ventas</PageTitle>
+        <p style={{ fontSize: "13px", color: "#888", margin: "2px 0 0" }}>
+          Gestioná tus Notas de Venta, controlá pagos parciales y seguí el estado de cada operación.
+        </p>
+      </div>
+
+      {/* Stats Cards */}
+      {stats && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "10px", marginBottom: "16px" }}>
+          <div style={{ background: "#1a1a2e", borderRadius: "12px", padding: "14px", color: "#fff" }}>
+            <div style={{ fontSize: "11px", color: "#aaa", marginBottom: "4px" }}>Ventas del período</div>
+            <div style={{ fontSize: "24px", fontWeight: 800 }}>{stats.total_count}</div>
+            <div style={{ fontSize: "12px", color: "#27ae60", marginTop: "2px" }}>
+              ${stats.total_revenue.toLocaleString("es-AR")} facturado
+            </div>
+          </div>
+          <div style={{ background: "#fff", borderRadius: "12px", padding: "14px", border: "1px solid #eee" }}>
+            <div style={{ fontSize: "11px", color: "#888", marginBottom: "4px" }}>Cobrado</div>
+            <div style={{ fontSize: "20px", fontWeight: 800, color: "#27ae60" }}>${stats.total_collected.toLocaleString("es-AR")}</div>
+            {stats.total_pending > 0 && (
+              <div style={{ fontSize: "12px", color: "#f39c12", marginTop: "2px" }}>
+                ${stats.total_pending.toLocaleString("es-AR")} pendiente
+              </div>
+            )}
+          </div>
+          <div style={{ background: "#fff", borderRadius: "12px", padding: "14px", border: "1px solid #eee" }}>
+            <div style={{ fontSize: "11px", color: "#888", marginBottom: "4px" }}>🏆 Mejor Vendedor</div>
+            <div style={{ fontSize: "16px", fontWeight: 800 }}>
+              {stats.best_seller ? stats.best_seller.seller_name : "—"}
+            </div>
+            {stats.best_seller && (
+              <div style={{ fontSize: "11px", color: "#888", marginTop: "2px" }}>
+                {stats.best_seller.sale_count} ventas · ${Number(stats.best_seller.revenue).toLocaleString("es-AR")}
+              </div>
+            )}
+          </div>
+          <div style={{ background: "#fff", borderRadius: "12px", padding: "14px", border: "1px solid #eee" }}>
+            <div style={{ fontSize: "11px", color: "#888", marginBottom: "4px" }}>💳 Métodos de Pago</div>
+            {stats.payment_breakdown.filter(b => b.method_name).slice(0, 2).map(b => (
+              <div key={b.method_name} style={{ fontSize: "12px", display: "flex", justifyContent: "space-between", marginBottom: "2px" }}>
+                <span>{b.method_name}</span>
+                <span style={{ fontWeight: 700 }}>${Number(b.collected).toLocaleString("es-AR")}</span>
+              </div>
+            ))}
+            {!stats.payment_breakdown.filter(b => b.method_name).length && (
+              <div style={{ fontSize: "12px", color: "#ccc" }}>Sin datos</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Controls */}
+      <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px", flexWrap: "wrap" }}>
+        {/* Period filter */}
+        <div style={{ display: "flex", gap: "4px", background: "#f0f0f0", padding: "3px", borderRadius: "8px" }}>
+          {(["today", "week", "month"] as Period[]).map(p => (
+            <button key={p} onClick={() => setPeriod(p)}
+              style={{ padding: "5px 12px", borderRadius: "6px", border: "none", background: period === p ? "#1a1a2e" : "transparent", color: period === p ? "#fff" : "#666", cursor: "pointer", fontSize: "12px", fontWeight: 700 }}>
+              {p === "today" ? "Hoy" : p === "week" ? "Semana" : "Mes"}
+            </button>
+          ))}
+        </div>
+
         <div style={{ marginLeft: "auto", display: "flex", gap: "8px", alignItems: "center" }}>
-          <button
-            onClick={() => setViewMode("cards")}
-            style={{ padding: "6px 12px", borderRadius: "8px", border: "none", background: viewMode === "cards" ? "#1a1a2e" : "#e0e0e0", color: viewMode === "cards" ? "#fff" : "#333", cursor: "pointer", fontSize: "13px" }}
-          >Cards</button>
-          <button
-            onClick={() => setViewMode("list")}
-            style={{ padding: "6px 12px", borderRadius: "8px", border: "none", background: viewMode === "list" ? "#1a1a2e" : "#e0e0e0", color: viewMode === "list" ? "#fff" : "#333", cursor: "pointer", fontSize: "13px" }}
-          >Lista</button>
-          <button
-            onClick={() => setShowNew(true)}
-            style={{ padding: "8px 16px", borderRadius: "8px", border: "none", background: "#27ae60", color: "#fff", cursor: "pointer", fontSize: "13px", fontWeight: 700 }}
-          >+ Nueva Venta</button>
+          <button onClick={() => setViewMode("cards")}
+            style={{ padding: "6px 12px", borderRadius: "8px", border: "none", background: viewMode === "cards" ? "#1a1a2e" : "#e0e0e0", color: viewMode === "cards" ? "#fff" : "#333", cursor: "pointer", fontSize: "13px" }}>
+            ▦
+          </button>
+          <button onClick={() => setViewMode("list")}
+            style={{ padding: "6px 12px", borderRadius: "8px", border: "none", background: viewMode === "list" ? "#1a1a2e" : "#e0e0e0", color: viewMode === "list" ? "#fff" : "#333", cursor: "pointer", fontSize: "13px" }}>
+            ☰
+          </button>
+          <button onClick={() => setShowNew(true)}
+            style={{ padding: "8px 16px", borderRadius: "8px", border: "none", background: "#27ae60", color: "#fff", cursor: "pointer", fontSize: "13px", fontWeight: 700 }}>
+            ➕ Nueva Venta
+          </button>
         </div>
       </div>
 
+      {/* Filters */}
       <div style={{ display: "flex", gap: "8px", marginBottom: "12px", flexWrap: "wrap" }}>
-        <input
-          value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Buscar por cliente, #NV, vendedor..."
-          style={{ flex: 1, minWidth: "180px", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }}
-        />
+        <input value={search} onChange={e => setSearch(e.target.value)}
+          placeholder="Buscar..."
+          style={{ flex: 1, minWidth: "160px", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
         <select value={filterChannel} onChange={e => setFilterChannel(e.target.value)}
-          style={{ padding: "8px 10px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px", minWidth: "130px" }}>
+          style={{ padding: "8px 10px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px", minWidth: "120px" }}>
           <option value="">Canal: Todos</option>
           {saleChannels.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
         </select>
         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-          style={{ padding: "8px 10px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px", minWidth: "130px" }}>
+          style={{ padding: "8px 10px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px", minWidth: "120px" }}>
           <option value="">Estado: Todos</option>
           {orderStatuses.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
         </select>
         <select value={filterPayment} onChange={e => setFilterPayment(e.target.value)}
-          style={{ padding: "8px 10px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px", minWidth: "130px" }}>
+          style={{ padding: "8px 10px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px", minWidth: "120px" }}>
           <option value="">Pago: Todos</option>
           {paymentStatuses.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
         </select>
@@ -132,10 +218,10 @@ export default function VentasPage() {
       ) : viewMode === "cards" ? (
         <div style={{ display: "grid", gap: "10px" }}>
           {filtered.map(o => (
-            <Card key={o.id} onClick={() => setDetailId(o.id)} style={{ cursor: "pointer" }}>
+            <Card key={o.id}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px", flexWrap: "wrap" }}>
                     <span style={{ fontWeight: 800, fontSize: "14px", color: "#1a1a2e" }}>{o.order_number}</span>
                     {o.sale_channel_name && (
                       <span style={{ fontSize: "11px", background: "#f0f0f0", padding: "2px 6px", borderRadius: "4px", color: "#666" }}>
@@ -153,9 +239,9 @@ export default function VentasPage() {
                     <span style={{ fontSize: "17px", fontWeight: 800, color: "#1a1a2e" }}>
                       ${Number(o.total).toLocaleString("es-AR")}
                     </span>
-                    {o.discount_value > 0 && (
-                      <span style={{ fontSize: "12px", color: "#e74c3c", textDecoration: "line-through" }}>
-                        ${Number(o.subtotal + o.discount_value + o.delivery_fee).toLocaleString("es-AR")}
+                    {o.payment_paid > 0 && Number(o.payment_paid) < Number(o.total) && (
+                      <span style={{ fontSize: "12px", color: "#f39c12" }}>
+                        · ${Number(o.payment_paid).toLocaleString("es-AR")} cobrado
                       </span>
                     )}
                     <span style={{ fontSize: "11px", color: "#aaa" }}>({itemCount(o)} items)</span>
@@ -169,12 +255,25 @@ export default function VentasPage() {
                     )}
                   </div>
                 </div>
-                <div style={{ fontSize: "11px", color: "#aaa", textAlign: "right" }}>
-                  {o.payment_paid > 0 && (
-                    <div style={{ color: "#27ae60" }}>Cobrado: ${Number(o.payment_paid).toLocaleString("es-AR")}</div>
-                  )}
-                  {o.payment_pending > 0 && o.payment_pending < o.total && (
-                    <div style={{ color: "#f39c12" }}>Pendiente: ${Number(o.payment_pending).toLocaleString("es-AR")}</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px", alignItems: "flex-end" }}>
+                  <div style={{ display: "flex", gap: "4px" }}>
+                    <button onClick={() => setDetailId(o.id)} title="Ver detalle"
+                      style={{ padding: "5px 8px", borderRadius: "6px", border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontSize: "12px" }}>
+                      👁️
+                    </button>
+                    <button onClick={() => setEditId(o.id)} title="Editar"
+                      style={{ padding: "5px 8px", borderRadius: "6px", border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontSize: "12px" }}>
+                      ✏️
+                    </button>
+                    <button onClick={() => handleDelete(o.id, o.order_number)} title="Eliminar"
+                      style={{ padding: "5px 8px", borderRadius: "6px", border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontSize: "12px", color: "#e74c3c" }}>
+                      🗑️
+                    </button>
+                  </div>
+                  {pendingAmount(o) > 0 && Number(o.payment_paid) > 0 && (
+                    <div style={{ fontSize: "11px", color: "#f39c12", textAlign: "right" }}>
+                      $ {pendingAmount(o).toLocaleString("es-AR")} pend.
+                    </div>
                   )}
                 </div>
               </div>
@@ -194,11 +293,12 @@ export default function VentasPage() {
                 <th style={{ padding: "8px", textAlign: "right", fontWeight: 700 }}>Total</th>
                 <th style={{ padding: "8px", textAlign: "left", fontWeight: 700 }}>Pago</th>
                 <th style={{ padding: "8px", textAlign: "left", fontWeight: 700 }}>Estado</th>
+                <th style={{ padding: "8px", textAlign: "center", fontWeight: 700 }}>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map(o => (
-                <tr key={o.id} onClick={() => setDetailId(o.id)} style={{ cursor: "pointer", borderBottom: "1px solid #f0" }}>
+                <tr key={o.id} style={{ borderBottom: "1px solid #f0" }}>
                   <td style={{ padding: "8px", fontWeight: 700 }}>{o.order_number}</td>
                   <td style={{ padding: "8px" }}>{o.contact_name || "—"}</td>
                   <td style={{ padding: "8px" }}>{new Date(o.created_at).toLocaleDateString("es-AR")}</td>
@@ -211,6 +311,11 @@ export default function VentasPage() {
                   <td style={{ padding: "8px" }}>
                     {o.order_status_name && <Badge color={o.order_status_color || "#888"}>{o.order_status_name}</Badge>}
                   </td>
+                  <td style={{ padding: "8px", textAlign: "center" }}>
+                    <button onClick={() => setDetailId(o.id)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "12px", padding: "2px 4px" }}>👁️</button>
+                    <button onClick={() => setEditId(o.id)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "12px", padding: "2px 4px" }}>✏️</button>
+                    <button onClick={() => handleDelete(o.id, o.order_number)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "12px", padding: "2px 4px", color: "#e74c3c" }}>🗑️</button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -218,21 +323,31 @@ export default function VentasPage() {
         </div>
       )}
 
+      {/* Modals */}
       {detailId && (
-        <div style={overlayStyle} onClick={e => e.target === e.currentTarget && setDetailId(null)}>
-          <OrderDetailModal
-            orderId={detailId}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}
+          onClick={e => e.target === e.currentTarget && setDetailId(null)}>
+          <OrderDetailReadOnly orderId={detailId} onClose={() => setDetailId(null)} />
+        </div>
+      )}
+
+      {editId && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}
+          onClick={e => e.target === e.currentTarget && setEditId(null)}>
+          <EditSaleModal
+            orderId={editId}
+            saleChannels={saleChannels}
             orderStatuses={orderStatuses}
             paymentStatuses={paymentStatuses}
-            saleChannels={saleChannels}
-            onClose={() => setDetailId(null)}
+            onClose={() => setEditId(null)}
             onUpdated={handleUpdated}
           />
         </div>
       )}
 
       {showNew && (
-        <div style={overlayStyle} onClick={e => e.target === e.currentTarget && setShowNew(false)}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}
+          onClick={e => e.target === e.currentTarget && setShowNew(false)}>
           <NewSaleModal
             saleChannels={saleChannels}
             orderStatuses={orderStatuses}
