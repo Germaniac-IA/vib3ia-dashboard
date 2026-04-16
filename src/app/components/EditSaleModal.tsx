@@ -104,17 +104,69 @@ export default function EditSaleModal({ orderId, saleChannels, orderStatuses, pa
   const remaining = total - Number(order?.payment_paid || 0);
 
   function addProduct(p: Product) {
-    setItems([...items, { product_id: p.id, product_name: p.name, quantity: 1, unit_price: Number(p.price) || 0 }]);
+    // Call backend to add item (with stock deduction)
+    postJson(`/orders/${orderId}/items`, {
+      product_id: p.id,
+      quantity: 1,
+      unit_price: Number(p.price) || 0,
+    }).then(() => {
+      // Reload order to get updated items
+      return fetchJson<OrderDetail>("/orders/" + orderId);
+    }).then(updated => {
+      setOrder(updated);
+      setItems(updated.items.map((it: any) => ({
+        id: it.id,
+        product_id: it.product_id,
+        product_name: it.product_name,
+        quantity: it.quantity,
+        unit_price: Number(it.unit_price),
+      })));
+      onUpdated();
+    }).catch((e: any) => {
+      alert(e?.response?.data?.error || "No se pudo agregar el producto");
+    });
     setProductSearch("");
     setShowProductDropdown(false);
   }
 
   function updateItem(idx: number, field: keyof ItemDraft, value: any) {
-    setItems(items.map((item, i) => i === idx ? { ...item, [field]: value } : item));
+    const item = items[idx];
+    if (field === "quantity" || field === "unit_price") {
+      // Call backend
+      putJson(`/orders/${orderId}/items/${item.id}`, {
+        quantity: field === "quantity" ? value : item.quantity,
+        unit_price: field === "unit_price" ? value : item.unit_price,
+      }).then(() => {
+        return fetchJson<OrderDetail>("/orders/" + orderId);
+      }).then(updated => {
+        setOrder(updated);
+        setItems(updated.items.map((it: any) => ({
+          id: it.id, product_id: it.product_id, product_name: it.product_name,
+          quantity: it.quantity, unit_price: Number(it.unit_price),
+        })));
+        onUpdated();
+      }).catch((e: any) => {
+        alert(e?.response?.data?.error || "No se pudo actualizar el item");
+      });
+    }
+    setItems(items.map((it, i) => i === idx ? { ...it, [field]: value } : it));
   }
 
   function removeItem(idx: number) {
-    setItems(items.filter((_, i) => i !== idx));
+    const item = items[idx];
+    if (!item.id) { setItems(items.filter((_, i) => i !== idx)); return; }
+    deleteJson(`/orders/${orderId}/items/${item.id}`).then(() => {
+      return fetchJson<OrderDetail>("/orders/" + orderId);
+    }).then(updated => {
+      setOrder(updated);
+      setItems(updated.items.map((it: any) => ({
+        id: it.id, product_id: it.product_id, product_name: it.product_name,
+        quantity: it.quantity, unit_price: Number(it.unit_price),
+      })));
+      onUpdated();
+    }).catch((e: any) => {
+      alert(e?.response?.data?.error || "No se pudo eliminar el item");
+    });
   }
 
   async function handleSave() {
