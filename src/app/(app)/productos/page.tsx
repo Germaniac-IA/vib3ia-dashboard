@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { fetchJson, postJson, putJson, deleteJson } from "../../lib";
 import { Card, IconButton, Input, Select, PageTitle, Loading } from "../../components/shared/UI";
+import StatsCards from "../../components/shared/StatsCards";
 
 type InputItem = { id: number; name: string; unit: string; default_cost: number };
 type ProductComponent = { id: number; input_item_id: number; input_item_name: string; input_unit: string; quantity: number; default_cost: number };
@@ -27,6 +28,8 @@ export default function ProductosPage() {
   const [allInputs, setAllInputs] = useState<InputItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [stats, setStats] = useState<any>(null);
+  const [period, setPeriod] = useState<"today"|"week"|"month">("today");
   const [editing, setEditing] = useState<Product | null>(null);
   const [components, setComponents] = useState<ProductComponent[]>([]);
   const [saving, setSaving] = useState(false);

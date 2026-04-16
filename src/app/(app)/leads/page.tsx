@@ -4,6 +4,7 @@ import type { CSSProperties } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { deleteJson, fetchJson, postJson, putJson } from "../../lib";
 import { Badge, Button, Card, Empty, IconButton, Input, Loading, PageTitle } from "../../components/shared/UI";
+import StatsCards from "../../components/shared/StatsCards";
 
 type LeadStatus = "new" | "contacted" | "waiting" | "qualified" | "converted" | "rejected";
 type ViewMode = "cards" | "list";
@@ -165,6 +166,8 @@ export default function LeadsPage() {
   const [form, setForm] = useState<LeadForm>(emptyForm);
   const [interactions, setInteractions] = useState<LeadInteraction[]>([]);
   const [interactionDraft, setInteractionDraft] = useState("");
+  const [stats, setStats] = useState<any>(null);
+  const [period, setPeriod] = useState<"today"|"week"|"month">("today");
   const [interactionChannel, setInteractionChannel] = useState("manual");
   const [interactionHandle, setInteractionHandle] = useState("");
   const [error, setError] = useState("");
@@ -428,6 +431,8 @@ export default function LeadsPage() {
           <IconButton variant="primary" title="Nuevo lead" onClick={openNew}>+</IconButton>
         </div>
       </div>
+
+      <StatsCards apiPath="/leads/stats" stats={stats} setStats={setStats} period={period} setPeriod={setPeriod} />
 
       <Card style={{ marginBottom: "16px" }}>
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "2fr 1fr", gap: "12px" }}>

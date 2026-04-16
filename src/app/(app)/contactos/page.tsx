@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { fetchJson, postJson, putJson, deleteJson } from "../../lib";
 import { Card, IconButton, Input, PageTitle, Loading, Empty } from "../../components/shared/UI";
+import StatsCards from "../../components/shared/StatsCards";
 
 type CondicionIva = { value: string; label: string };
 
@@ -30,6 +31,8 @@ export default function ContactosPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [stats, setStats] = useState<any>(null);
+  const [period, setPeriod] = useState<"today"|"week"|"month">("today");
   const [editing, setEditing] = useState<Contact | null>(null);
   const [condicionesIva, setCondicionesIva] = useState<CondicionIva[]>([]);
   const [search, setSearch] = useState("");
