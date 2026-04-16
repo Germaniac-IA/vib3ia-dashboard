@@ -90,7 +90,7 @@ export default function EntregasPage() {
   function saveStatusEdit(id: number) {
     fetch(`http://149.50.148.131:4000/api/deliveries/${id}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Authorization": "Bearer " + (localStorage.getItem("token")||""), "Content-Type": "application/json" },
       body: JSON.stringify({ status: editStatus }),
     }).then(() => { setShowStatusEdit(null); load(); }).catch(e => alert("Error: " + e));
   }
@@ -99,7 +99,7 @@ export default function EntregasPage() {
   function saveAddressEdit(id: number) {
     fetch(`http://149.50.148.131:4000/api/deliveries/${id}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Authorization": "Bearer " + (localStorage.getItem("token")||""), "Content-Type": "application/json" },
       body: JSON.stringify({ address: editAddress.address, notes: editAddress.notes }),
     }).then(() => { setShowAddressEdit(null); load(); }).catch(e => alert("Error: " + e));
   }
