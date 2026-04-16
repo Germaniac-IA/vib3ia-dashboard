@@ -481,38 +481,91 @@ function PaymentStatusesABM() {
   );
 }
 
-// ─── INSUMOS ─────────────────────────────────────
+// ─── INSUMOS ────────────────────────────────────────
+type InputItemType = { id: number; name: string; unit: string; default_cost: number; is_active: boolean; requires_stock: boolean; stock_quantity: number; last_cost: number; };
+
 function InputItemsABM() {
-  const [items, setItems] = useState<InputItem[]>([]);
+  const [items, setItems] = useState<InputItemType[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [editing, setEditing] = useState<InputItem | null>(null);
-  const [form, setForm] = useState({ name: "", unit: "unidades", default_cost: "" });
+  const [showCostModal, setShowCostModal] = useState(false);
+  const [editing, setEditing] = useState<InputItemType | null>(null);
+  const [form, setForm] = useState({ name: "", unit: "unidades", default_cost: "", requires_stock: false, stock_quantity: "" });
+  const [costMethod, setCostMethod] = useState<"current"|"average"|"reposition"|"custom">("current");
+  const [customCost, setCustomCost] = useState("");
+  const [avgCount, setAvgCount] = useState("5");
   const [saving, setSaving] = useState(false);
+  const [costSaving, setCostSaving] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<number[]>([]);
 
   function load() {
     setLoading(true);
-    fetchJson<InputItem[]>("/input-items").then(setItems).catch(console.error).finally(() => setLoading(false));
+    fetchJson<InputItemType[]>("/input-items").then(setItems).catch(console.error).finally(() => setLoading(false));
   }
   useEffect(() => { load(); }, []);
-  function openNew() { setEditing(null); setForm({ name: "", unit: "unidades", default_cost: "" }); setShowForm(true); }
-  function openEdit(i: InputItem) { setEditing(i); setForm({ name: i.name, unit: i.unit || "unidades", default_cost: String(i.default_cost || "") }); setShowForm(true); }
+
+  function openNew() { setEditing(null); setForm({ name: "", unit: "unidades", default_cost: "", requires_stock: false, stock_quantity: "" }); setShowForm(true); }
+  function openEdit(i: InputItemType) { setEditing(i); setForm({ name: i.name, unit: i.unit || "unidades", default_cost: String(i.default_cost || ""), requires_stock: i.requires_stock || false, stock_quantity: String(i.stock_quantity || "") }); setShowForm(true); }
+
   async function handleSave() {
     if (!form.name.trim()) return;
     setSaving(true);
     try {
-      const payload = { name: form.name, unit: form.unit, default_cost: Number(form.default_cost) || 0 };
+      const payload: any = { name: form.name, unit: form.unit, default_cost: Number(form.default_cost) || 0, requires_stock: form.requires_stock, stock_quantity: form.requires_stock ? (Number(form.stock_quantity) || 0) : 0 };
       if (editing) await putJson("/input-items/" + editing.id, payload);
       else await postJson("/input-items", payload);
       setShowForm(false); load();
     } catch (e) { console.error(e); } finally { setSaving(false); }
   }
+
   async function remove(id: number) { if (!confirm("Eliminar?")) return; try { await deleteJson("/input-items/" + id); load(); } catch (e) { console.error(e); } }
-  function renderItem(i: InputItem) {
+
+  function toggleSelect(id: number) {
+    setSelectedItems(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  }
+
+  async function applyCostUpdate() {
+    if (selectedItems.length === 0) { alert("Seleccioná al menos un insumo"); return; }
+    setCostSaving(true);
+    try {
+      for (const id of selectedItems) {
+        const item = items.find(i => i.id === id);
+        if (!item) continue;
+        let newCost = item.default_cost || 0;
+        if (costMethod === "reposition") newCost = item.last_cost || 0;
+        else if (costMethod === "custom") newCost = Number(customCost) || 0;
+        else if (costMethod === "average") {
+          try {
+            const res = await fetch("/api/input-items/" + id + "/cost", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json", "Authorization": "Bearer " + (typeof window !== "undefined" ? localStorage.getItem("token") : "") },
+              body: JSON.stringify({ method: "average", avg_count: Number(avgCount) || 5 }),
+            });
+            if (res.ok) { const data = await res.json(); newCost = data.new_cost || newCost; } } catch { /* keep */ }
+        }
+        await putJson("/input-items/" + id, { name: item.name, unit: item.unit, default_cost: newCost, requires_stock: item.requires_stock, stock_quantity: item.stock_quantity });
+      }
+      setShowCostModal(false);
+      setSelectedItems([]);
+      load();
+    } catch (e) { console.error(e); alert("Error al actualizar costos"); }
+    finally { setCostSaving(false); }
+  }
+
+  function renderItem(i: InputItemType) {
     return (
       <div key={i.id} style={{ padding: "5px 0", borderBottom: "1px solid #f5", fontSize: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
+        <input type="checkbox" checked={selectedItems.includes(i.id)} onChange={() => toggleSelect(i.id)} style={{ width: "16px", height: "16px", cursor: "pointer" }} />
         <span style={{ flex: 1, fontWeight: 600 }}>{i.name}</span>
-        <span style={{ fontSize: "11px", color: "#888" }}>{i.unit} · ${Number(i.default_cost || 0).toLocaleString("es-AR")}</span>
+        <span style={{ fontSize: "11px", color: "#888" }}>{i.unit}</span>
+        {i.requires_stock ? (
+          <span style={{ fontSize: "11px", background: "#27ae6022", color: "#27ae60", padding: "1px 6px", borderRadius: "6px" }}>
+            {Number(i.stock_quantity || 0)} {i.unit}
+          </span>
+        ) : (
+          <span style={{ fontSize: "11px", color: "#ccc" }}>—</span>
+        )}
+        <span style={{ fontSize: "11px", color: "#888" }}>${Number(i.default_cost || 0).toLocaleString("es-AR")}</span>
         <IconButton variant="ghost" title="Editar" onClick={() => openEdit(i)}>✏️</IconButton>
         <IconButton variant="danger" title="Eliminar" onClick={() => remove(i.id)}>🗑️</IconButton>
       </div>
@@ -521,19 +574,40 @@ function InputItemsABM() {
 
   return (
     <>
-      <CompactABM title="🧴 Insumos" items={items} onAdd={openNew} onEdit={openEdit} onDelete={remove} renderItem={renderItem} />
+      <Card style={{ marginBottom: "12px" }}>
+        <div style={{ display: "flex", alignItems: "center", padding: "10px 16px", borderBottom: "1px solid #f0" }}>
+          <span style={{ fontSize: "13px", fontWeight: 700, flex: 1 }}>🧴 Insumos</span>
+          <span style={{ fontSize: "11px", color: "#aaa", marginRight: "8px" }}>{items.length}</span>
+          {selectedItems.length > 0 && (
+            <button onClick={() => setShowCostModal(true)} style={{ padding: "4px 10px", borderRadius: "6px", border: "none", background: "#f39c12", color: "#fff", cursor: "pointer", fontSize: "11px", fontWeight: 700, marginRight: "6px" }}>
+              📊 Actualizar Costos ({selectedItems.length})
+            </button>
+          )}
+          <IconButton variant="primary" title="Agregar" onClick={(e) => { e.stopPropagation(); openNew(); }}>+</IconButton>
+        </div>
+        <div style={{ padding: "0 16px 12px" }}>
+          {items.length === 0 ? <div style={{ fontSize: "12px", color: "#ccc", textAlign: "center", padding: "8px" }}>Sin insumos</div>
+            : items.map(renderItem)}
+        </div>
+      </Card>
+
       {showForm && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}
              onClick={(e) => e.target === e.currentTarget && setShowForm(false)}>
-          <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "360px" }}>
+          <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "380px" }}>
             <h3 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 800 }}>{editing ? "Editar" : "Nuevo"} Insumo</h3>
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                placeholder="Nombre" style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
-              <input value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}
-                placeholder="Unidad (ej: kg, litros)" style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
-              <input type="number" value={form.default_cost} min={0}
-                onChange={e => setForm(f => ({ ...f, default_cost: e.target.value }))}
+              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Nombre" style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
+              <input value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} placeholder="Unidad (ej: kg, litros)" style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <input type="checkbox" checked={form.requires_stock} onChange={e => setForm(f => ({ ...f, requires_stock: e.target.checked }))} style={{ width: "18px", height: "18px" }} />
+                <span style={{ fontSize: "13px", fontWeight: 600 }}>Lleva stock</span>
+              </div>
+              {form.requires_stock && (
+                <input type="number" value={form.stock_quantity} min={0} onChange={e => setForm(f => ({ ...f, stock_quantity: e.target.value }))}
+                  placeholder="Cantidad actual en stock" style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
+              )}
+              <input type="number" value={form.default_cost} min={0} onChange={e => setForm(f => ({ ...f, default_cost: e.target.value }))}
                 placeholder="Costo default" style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
             </div>
             <div style={{ display: "flex", gap: "8px", marginTop: "16px" }}>
@@ -543,11 +617,51 @@ function InputItemsABM() {
           </div>
         </div>
       )}
+
+      {showCostModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}
+             onClick={(e) => e.target === e.currentTarget && setShowCostModal(false)}>
+          <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "420px" }}>
+            <h3 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 800 }}>📊 Actualizar Costos</h3>
+            <div style={{ fontSize: "12px", color: "#888", marginBottom: "12px" }}>{selectedItems.length} insumo(s) seleccionado(s)</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              {([
+                { value: "current", label: "Costo actual", desc: "Mantiene el valor actual en la tabla" },
+                { value: "average", label: "Promedio de compras", desc: "Promedio de las últimas N compras" },
+                { value: "reposition", label: "Última compra (reposición)", desc: "Valor de la última compra registrada" },
+                { value: "custom", label: "Personalizado", desc: "Ingresás un valor a mano" },
+              ] as const).map(opt => (
+                <div key={opt.value} onClick={() => setCostMethod(opt.value)}
+                  style={{ padding: "10px 12px", borderRadius: "8px", border: "2px solid", borderColor: costMethod === opt.value ? "#1a1a2e" : "#ddd", background: costMethod === opt.value ? "#f0f0f0" : "#fff", cursor: "pointer" }}>
+                  <div style={{ fontWeight: 700, fontSize: "13px" }}>{opt.label}</div>
+                  <div style={{ fontSize: "11px", color: "#888" }}>{opt.desc}</div>
+                </div>
+              ))}
+              {costMethod === "average" && (
+                <div>
+                  <label style={{ fontSize: "12px", fontWeight: 700, color: "#666" }}>Cantidad de últimas compras</label>
+                  <input type="number" value={avgCount} min={1} max={50} onChange={e => setAvgCount(e.target.value)} style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px", marginTop: "4px" }} />
+                </div>
+              )}
+              {costMethod === "custom" && (
+                <div>
+                  <label style={{ fontSize: "12px", fontWeight: 700, color: "#666" }}>Nuevo costo</label>
+                  <input type="number" value={customCost} min={0} onChange={e => setCustomCost(e.target.value)} placeholder="0.00" style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px", marginTop: "4px" }} />
+                </div>
+              )}
+            </div>
+            <div style={{ display: "flex", gap: "8px", marginTop: "16px" }}>
+              <button onClick={() => { setShowCostModal(false); setSelectedItems([]); }} style={{ flex: 1, padding: "8px", borderRadius: "8px", border: "1px solid #ddd", background: "#fff", cursor: "pointer" }}>Cancelar</button>
+              <button onClick={applyCostUpdate} disabled={costSaving} style={{ flex: 2, padding: "8px", borderRadius: "8px", border: "none", background: "#f39c12", color: "#fff", cursor: "pointer", fontWeight: 700 }}>{costSaving ? "..." : "Aplicar a todos"}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
 
-// ─── MAIN ─────────────────────────────────────────
+
 export default function ParametrosPage() {
   return (
     <div>
