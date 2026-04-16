@@ -8,9 +8,9 @@ type PaymentMethod = { id: number; name: string; is_personal: boolean; is_cash: 
 type Category = { id: number; name: string; is_active: boolean; auto_generate_sku: boolean; sku_prefix: string; sku_counter: number };
 type Brand = { id: number; name: string; is_imported: boolean; premium_level: number; is_active: boolean };
 type InputItem = { id: number; name: string; unit: string; default_cost: number; is_active: boolean };
-
-const overlayStyle = { position: "fixed" as const, inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" };
-const modalStyle = { background: "#fff", borderRadius: "16px", padding: "24px", width: "100%" as const, maxWidth: "440px" };
+type SaleChannel = { id: number; name: string; is_active: boolean; sort_order: number };
+type OrderStatus = { id: number; name: string; color: string; sort_order: number; is_active: boolean };
+type PaymentStatus = { id: number; name: string; color: string; sort_order: number; is_active: boolean };
 
 function CompactABM({ title, items, onAdd, onEdit, onDelete, renderItem }: {
   title: string; items: any[];
@@ -53,6 +53,7 @@ function CompactABM({ title, items, onAdd, onEdit, onDelete, renderItem }: {
   );
 }
 
+// ─── MÉTODOS DE PAGO ───────────────────────────────
 function PaymentMethodsABM() {
   const [items, setItems] = useState<PaymentMethod[]>([]);
   const [loading, setLoading] = useState(true);
@@ -104,38 +105,37 @@ function PaymentMethodsABM() {
 
   return (
     <>
-      {loading ? <Loading /> : <CompactABM title="💳 Medios de Pago" items={items} onAdd={openNew} onEdit={openEdit} onDelete={remove} renderItem={renderItem} />}
+      <CompactABM title="💳 Métodos de Pago" items={items} onAdd={openNew} onEdit={openEdit} onDelete={remove} renderItem={renderItem} />
       {showForm && (
-        <div style={overlayStyle} onClick={(e) => { if (e.target === e.currentTarget) setShowForm(false); }}>
-          <div style={modalStyle}>
-            <h3 style={{ fontSize: "15px", fontWeight: 700, marginBottom: "16px" }}>{editing ? "✏️ Editar" : "💳 Nuevo medio de pago"}</h3>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-              <Input label="Nombre" value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="Efectivo, Transferencia..." />
-              <div>
-                <label style={{ fontSize: "12px", fontWeight: 600, display: "block", marginBottom: "4px", color: "#555" }}>Tipo</label>
-                <select value={form.is_cash ? "cash" : "nocash"} onChange={(e) => setForm({ ...form, is_cash: e.target.value === "cash" })}
-                        style={{ width: "100%", padding: "7px 10px", border: "1px solid #ddd", borderRadius: "8px", fontSize: "13px" }}>
-                  <option value="cash">💵 Efectivo</option>
-                  <option value="nocash">🏦 Transferencia / Otro</option>
-                </select>
-              </div>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}
+             onClick={(e) => e.target === e.currentTarget && setShowForm(false)}>
+          <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "400px" }}>
+            <h3 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 800 }}>{editing ? "Editar" : "Nuevo"} Método de Pago</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="Nombre (ej: Mercado Pago)" style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", cursor: "pointer" }}>
+                <input type="checkbox" checked={form.is_cash} onChange={e => setForm(f => ({ ...f, is_cash: e.target.checked }))} />
+                Es efectivo
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", cursor: "pointer" }}>
+                <input type="checkbox" checked={form.is_personal} onChange={e => setForm(f => ({ ...f, is_personal: e.target.checked }))} />
+                Es método personal (no mostrar en caja)
+              </label>
               {!form.is_cash && (
                 <>
-                  <Input label="CBU / CVU" value={form.cbu_cvu} onChange={(v) => setForm({ ...form, cbu_cvu: v })} placeholder="000123456..." />
-                  <Input label="Alias" value={form.alias} onChange={(v) => setForm({ ...form, alias: v })} placeholder="mi.alias.banco" />
-                  <Input label="Banco" value={form.banco} onChange={(v) => setForm({ ...form, banco: v })} placeholder="Banco..." />
+                  <input value={form.alias} onChange={e => setForm(f => ({ ...f, alias: e.target.value }))}
+                    placeholder="Alias (opcional)" style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
+                  <input value={form.cbu_cvu} onChange={e => setForm(f => ({ ...f, cbu_cvu: e.target.value }))}
+                    placeholder="CBU / CVU" style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
+                  <input value={form.banco} onChange={e => setForm(f => ({ ...f, banco: e.target.value }))}
+                    placeholder="Banco" style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
                 </>
               )}
             </div>
-            <div style={{ marginTop: "10px" }}>
-              <label style={{ fontSize: "12px", fontWeight: 600, display: "flex", alignItems: "center", gap: "6px", cursor: "pointer" }}>
-                <input type="checkbox" checked={form.is_personal} onChange={(e) => setForm({ ...form, is_personal: e.target.checked })} />
-                👤 Es cuenta personal
-              </label>
-            </div>
-            <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: "16px" }}>
-              <Button variant="secondary" onClick={() => setShowForm(false)}>Cancelar</Button>
-              <Button onClick={handleSave} disabled={saving}>{saving ? "Guardando..." : "Guardar"}</Button>
+            <div style={{ display: "flex", gap: "8px", marginTop: "16px" }}>
+              <button onClick={() => setShowForm(false)} style={{ flex: 1, padding: "8px", borderRadius: "8px", border: "1px solid #ddd", background: "#fff", cursor: "pointer" }}>Cancelar</button>
+              <button onClick={handleSave} disabled={saving} style={{ flex: 1, padding: "8px", borderRadius: "8px", border: "none", background: "#1a1a2e", color: "#fff", cursor: "pointer", fontWeight: 700 }}>{saving ? "..." : "Guardar"}</button>
             </div>
           </div>
         </div>
@@ -144,12 +144,13 @@ function PaymentMethodsABM() {
   );
 }
 
+// ─── CATEGORÍAS DE PRODUCTOS ─────────────────────
 function CategoriesABM() {
   const [items, setItems] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
-  const [form, setForm] = useState({ name: "", auto_generate_sku: true, sku_prefix: "" });
+  const [form, setForm] = useState({ name: "", auto_generate_sku: false, sku_prefix: "" });
   const [saving, setSaving] = useState(false);
 
   function load() {
@@ -157,30 +158,23 @@ function CategoriesABM() {
     fetchJson<Category[]>("/product-categories").then(setItems).catch(console.error).finally(() => setLoading(false));
   }
   useEffect(() => { load(); }, []);
-
-  function openNew() { setEditing(null); setForm({ name: "", auto_generate_sku: true, sku_prefix: "" }); setShowForm(true); }
-  function openEdit(c: Category) {
-    setEditing(c);
-    setForm({ name: c.name || "", auto_generate_sku: c.auto_generate_sku !== false, sku_prefix: c.sku_prefix || "" });
-    setShowForm(true);
-  }
+  function openNew() { setEditing(null); setForm({ name: "", auto_generate_sku: false, sku_prefix: "" }); setShowForm(true); }
+  function openEdit(c: Category) { setEditing(c); setForm({ name: c.name, auto_generate_sku: c.auto_generate_sku, sku_prefix: c.sku_prefix || "" }); setShowForm(true); }
   async function handleSave() {
     if (!form.name.trim()) return;
     setSaving(true);
     try {
-      const payload = { name: form.name, auto_generate_sku: form.auto_generate_sku, sku_prefix: form.auto_generate_sku ? form.sku_prefix.toUpperCase().substring(0, 3) : null };
-      if (editing) await putJson("/product-categories/" + editing.id, payload);
-      else await postJson("/product-categories", payload);
+      if (editing) await putJson("/product-categories/" + editing.id, form);
+      else await postJson("/product-categories", form);
       setShowForm(false); load();
     } catch (e) { console.error(e); } finally { setSaving(false); }
   }
   async function remove(id: number) { if (!confirm("Eliminar?")) return; try { await deleteJson("/product-categories/" + id); load(); } catch (e) { console.error(e); } }
   function renderItem(c: Category) {
     return (
-      <div key={c.id} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "5px 0", borderBottom: "1px solid #f5", fontSize: "12px" }}>
-        <span style={{ flex: 1 }}>📂 {c.name}</span>
-        {c.auto_generate_sku && <span style={{ fontSize: "10px", color: "#6c63ff" }}>🔤 {(c.sku_prefix || "??") + "-XXX"}</span>}
-        <span style={{ fontSize: "10px", color: "#aaa" }}>{c.sku_counter > 0 ? "#" + c.sku_counter : ""}</span>
+      <div key={c.id} style={{ padding: "5px 0", borderBottom: "1px solid #f5", fontSize: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
+        <span style={{ flex: 1, fontWeight: 600 }}>{c.name}</span>
+        {c.auto_generate_sku && <span style={{ fontSize: "10px", background: "#e8f5e9", color: "#27ae60", padding: "1px 5px", borderRadius: "4px" }}>SKU: {c.sku_prefix}</span>}
         <IconButton variant="ghost" title="Editar" onClick={() => openEdit(c)}>✏️</IconButton>
         <IconButton variant="danger" title="Eliminar" onClick={() => remove(c.id)}>🗑️</IconButton>
       </div>
@@ -189,27 +183,27 @@ function CategoriesABM() {
 
   return (
     <>
-      {loading ? <Loading /> : <CompactABM title="📂 Categorías" items={items} onAdd={openNew} onEdit={openEdit} onDelete={remove} renderItem={renderItem} />}
+      <CompactABM title="📂 Categorías de Productos" items={items} onAdd={openNew} onEdit={openEdit} onDelete={remove} renderItem={renderItem} />
       {showForm && (
-        <div style={overlayStyle} onClick={(e) => { if (e.target === e.currentTarget) setShowForm(false); }}>
-          <div style={modalStyle}>
-            <h3 style={{ fontSize: "15px", fontWeight: 700, marginBottom: "16px" }}>{editing ? "✏️ Editar categoría" : "📂 Nueva categoría"}</h3>
-            <Input label="Nombre" value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="Nombre de la categoría" />
-            <div style={{ marginTop: "10px" }}>
-              <label style={{ fontSize: "12px", fontWeight: 600, display: "flex", alignItems: "center", gap: "6px", cursor: "pointer" }}>
-                <input type="checkbox" checked={form.auto_generate_sku} onChange={(e) => setForm({ ...form, auto_generate_sku: e.target.checked })} />
-                🔤 Genera SKU automáticamente
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}
+             onClick={(e) => e.target === e.currentTarget && setShowForm(false)}>
+          <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "380px" }}>
+            <h3 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 800 }}>{editing ? "Editar" : "Nueva"} Categoría</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="Nombre de categoría" style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", cursor: "pointer" }}>
+                <input type="checkbox" checked={form.auto_generate_sku} onChange={e => setForm(f => ({ ...f, auto_generate_sku: e.target.checked }))} />
+                Auto-generar SKU
               </label>
+              {form.auto_generate_sku && (
+                <input value={form.sku_prefix} onChange={e => setForm(f => ({ ...f, sku_prefix: e.target.value.toUpperCase().substring(0,3) }))}
+                  placeholder="Prefijo SKU (3 letras)" maxLength={3} style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
+              )}
             </div>
-            {form.auto_generate_sku && (
-              <div style={{ marginTop: "8px" }}>
-                <Input label="Prefijo SKU (3 letras)" value={form.sku_prefix} onChange={(v) => setForm({ ...form, sku_prefix: v.toUpperCase().substring(0, 3) })} placeholder="CER" />
-                <div style={{ fontSize: "11px", color: "#aaa", marginTop: "2px" }}>Resultado: {(form.sku_prefix || "XXX") + "-001"}</div>
-              </div>
-            )}
-            <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: "16px" }}>
-              <Button variant="secondary" onClick={() => setShowForm(false)}>Cancelar</Button>
-              <Button onClick={handleSave} disabled={saving}>{saving ? "Guardando..." : "Guardar"}</Button>
+            <div style={{ display: "flex", gap: "8px", marginTop: "16px" }}>
+              <button onClick={() => setShowForm(false)} style={{ flex: 1, padding: "8px", borderRadius: "8px", border: "1px solid #ddd", background: "#fff", cursor: "pointer" }}>Cancelar</button>
+              <button onClick={handleSave} disabled={saving} style={{ flex: 1, padding: "8px", borderRadius: "8px", border: "none", background: "#1a1a2e", color: "#fff", cursor: "pointer", fontWeight: 700 }}>{saving ? "..." : "Guardar"}</button>
             </div>
           </div>
         </div>
@@ -218,12 +212,13 @@ function CategoriesABM() {
   );
 }
 
+// ─── MARCAS ───────────────────────────────────────
 function BrandsABM() {
   const [items, setItems] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Brand | null>(null);
-  const [form, setForm] = useState({ name: "", is_imported: false, premium_level: 5 });
+  const [form, setForm] = useState({ name: "", is_imported: false, premium_level: 1 });
   const [saving, setSaving] = useState(false);
 
   function load() {
@@ -231,13 +226,8 @@ function BrandsABM() {
     fetchJson<Brand[]>("/product-brands").then(setItems).catch(console.error).finally(() => setLoading(false));
   }
   useEffect(() => { load(); }, []);
-
-  function openNew() { setEditing(null); setForm({ name: "", is_imported: false, premium_level: 5 }); setShowForm(true); }
-  function openEdit(b: Brand) {
-    setEditing(b);
-    setForm({ name: b.name || "", is_imported: b.is_imported || false, premium_level: b.premium_level || 5 });
-    setShowForm(true);
-  }
+  function openNew() { setEditing(null); setForm({ name: "", is_imported: false, premium_level: 1 }); setShowForm(true); }
+  function openEdit(b: Brand) { setEditing(b); setForm({ name: b.name, is_imported: b.is_imported || false, premium_level: b.premium_level || 1 }); setShowForm(true); }
   async function handleSave() {
     if (!form.name.trim()) return;
     setSaving(true);
@@ -250,13 +240,10 @@ function BrandsABM() {
   async function remove(id: number) { if (!confirm("Eliminar?")) return; try { await deleteJson("/product-brands/" + id); load(); } catch (e) { console.error(e); } }
   function renderItem(b: Brand) {
     return (
-      <div key={b.id} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "5px 0", borderBottom: "1px solid #f5", fontSize: "12px" }}>
-        <span style={{ flex: 1 }}>{b.is_imported ? "🌍 " : ""}{b.name}</span>
-        {b.premium_level && b.premium_level !== 5 && (
-          <span style={{ fontSize: "10px", background: "#f39c1215", color: "#f39c12", padding: "2px 6px", borderRadius: "8px", fontWeight: 600 }}>
-            {b.premium_level}/10
-          </span>
-        )}
+      <div key={b.id} style={{ padding: "5px 0", borderBottom: "1px solid #f5", fontSize: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
+        <span style={{ flex: 1, fontWeight: 600 }}>{b.name}</span>
+        {b.is_imported && <span style={{ fontSize: "10px", background: "#fff3e0", color: "#e65100", padding: "1px 5px", borderRadius: "4px" }}>Importado</span>}
+        {b.premium_level > 1 && <span style={{ fontSize: "10px", color: "#888" }}>⭐ {b.premium_level}</span>}
         <IconButton variant="ghost" title="Editar" onClick={() => openEdit(b)}>✏️</IconButton>
         <IconButton variant="danger" title="Eliminar" onClick={() => remove(b.id)}>🗑️</IconButton>
       </div>
@@ -265,32 +252,27 @@ function BrandsABM() {
 
   return (
     <>
-      {loading ? <Loading /> : <CompactABM title="🏷️ Marcas" items={items} onAdd={openNew} onEdit={openEdit} onDelete={remove} renderItem={renderItem} />}
+      <CompactABM title="🏷️ Marcas" items={items} onAdd={openNew} onEdit={openEdit} onDelete={remove} renderItem={renderItem} />
       {showForm && (
-        <div style={overlayStyle} onClick={(e) => { if (e.target === e.currentTarget) setShowForm(false); }}>
-          <div style={modalStyle}>
-            <h3 style={{ fontSize: "15px", fontWeight: 700, marginBottom: "16px" }}>{editing ? "✏️ Editar marca" : "🏷️ Nueva marca"}</h3>
-            <Input label="Nombre" value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="Nombre de la marca" />
-            <div style={{ marginTop: "10px" }}>
-              <label style={{ fontSize: "12px", fontWeight: 600, display: "flex", alignItems: "center", gap: "6px", cursor: "pointer" }}>
-                <input type="checkbox" checked={form.is_imported} onChange={(e) => setForm({ ...form, is_imported: e.target.checked })} />
-                🌍 Es marca importada
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}
+             onClick={(e) => e.target === e.currentTarget && setShowForm(false)}>
+          <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "360px" }}>
+            <h3 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 800 }}>{editing ? "Editar" : "Nueva"} Marca</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="Nombre de marca" style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", cursor: "pointer" }}>
+                <input type="checkbox" checked={form.is_imported} onChange={e => setForm(f => ({ ...f, is_imported: e.target.checked }))} />
+                Es importado
               </label>
+              <div style={{ fontSize: "13px", color: "#666" }}>Nivel premium: {form.premium_level}</div>
+              <input type="range" min={1} max={5} value={form.premium_level}
+                onChange={e => setForm(f => ({ ...f, premium_level: Number(e.target.value) }))}
+                style={{ width: "100%" }} />
             </div>
-            <div style={{ marginTop: "10px" }}>
-              <label style={{ fontSize: "12px", fontWeight: 600, display: "block", marginBottom: "4px", color: "#555" }}>
-                Nivel premium: {form.premium_level}/10
-              </label>
-              <input type="range" min="1" max="10" value={form.premium_level}
-                onChange={(e) => setForm({ ...form, premium_level: parseInt(e.target.value) })}
-                style={{ width: "100%", accentColor: "#6c63ff" }} />
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", color: "#aaa" }}>
-                <span>Básico</span><span>Premium</span>
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: "16px" }}>
-              <Button variant="secondary" onClick={() => setShowForm(false)}>Cancelar</Button>
-              <Button onClick={handleSave} disabled={saving}>{saving ? "Guardando..." : "Guardar"}</Button>
+            <div style={{ display: "flex", gap: "8px", marginTop: "16px" }}>
+              <button onClick={() => setShowForm(false)} style={{ flex: 1, padding: "8px", borderRadius: "8px", border: "1px solid #ddd", background: "#fff", cursor: "pointer" }}>Cancelar</button>
+              <button onClick={handleSave} disabled={saving} style={{ flex: 1, padding: "8px", borderRadius: "8px", border: "none", background: "#1a1a2e", color: "#fff", cursor: "pointer", fontWeight: 700 }}>{saving ? "..." : "Guardar"}</button>
             </div>
           </div>
         </div>
@@ -299,99 +281,213 @@ function BrandsABM() {
   );
 }
 
-function LeadSourcesABM() {
-  const [items, setItems] = useState<Array<{ id: number; name: string; sort_order?: number; is_active?: boolean }>>([]);
+// ─── CANALES DE VENTA ─────────────────────────────
+function SaleChannelsABM() {
+  const [items, setItems] = useState<SaleChannel[]>([]);
   const [loading, setLoading] = useState(true);
-  const [open, setOpen] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<SaleChannel | null>(null);
+  const [form, setForm] = useState({ name: "", sort_order: 0 });
   const [saving, setSaving] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [form, setForm] = useState({ name: "", sort_order: "0" });
 
-  async function load() {
-    const data = await fetchJson<Array<{ id: number; name: string; sort_order?: number; is_active?: boolean }>>("/lead-sources");
-    setItems(data);
+  function load() {
+    setLoading(true);
+    fetchJson<SaleChannel[]>("/sale-channels").then(setItems).catch(console.error).finally(() => setLoading(false));
   }
-
-  useEffect(() => {
-    load().finally(() => setLoading(false));
-  }, []);
-
-  function resetForm() {
-    setEditingId(null);
-    setForm({ name: "", sort_order: "0" });
-  }
-
-  function startEdit(item: { id: number; name: string; sort_order?: number }) {
-    setEditingId(item.id);
-    setForm({ name: item.name || "", sort_order: String(item.sort_order ?? 0) });
-  }
-
+  useEffect(() => { load(); }, []);
+  function openNew() { setEditing(null); setForm({ name: "", sort_order: items.length + 1 }); setShowForm(true); }
+  function openEdit(c: SaleChannel) { setEditing(c); setForm({ name: c.name, sort_order: c.sort_order || 0 }); setShowForm(true); }
   async function handleSave() {
     if (!form.name.trim()) return;
     setSaving(true);
     try {
-      const payload = { name: form.name.trim(), sort_order: Number(form.sort_order) || 0 };
-      if (editingId) await putJson(`/lead-sources/${editingId}`, payload);
-      else await postJson("/lead-sources", payload);
-      await load();
-      resetForm();
-    } finally {
-      setSaving(false);
-    }
+      if (editing) await putJson("/sale-channels/" + editing.id, form);
+      else await postJson("/sale-channels", form);
+      setShowForm(false); load();
+    } catch (e) { console.error(e); } finally { setSaving(false); }
   }
-
-  async function remove(id: number) {
-    if (!confirm("Eliminar origen?")) return;
-    await deleteJson(`/lead-sources/${id}`);
-    await load();
-    if (editingId === id) resetForm();
+  async function remove(id: number) { if (!confirm("Eliminar?")) return; try { await deleteJson("/sale-channels/" + id); load(); } catch (e) { console.error(e); } }
+  function renderItem(c: SaleChannel) {
+    return (
+      <div key={c.id} style={{ padding: "5px 0", borderBottom: "1px solid #f5", fontSize: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
+        <span style={{ flex: 1, fontWeight: 600 }}>{c.name}</span>
+        <IconButton variant="ghost" title="Editar" onClick={() => openEdit(c)}>✏️</IconButton>
+        <IconButton variant="danger" title="Eliminar" onClick={() => remove(c.id)}>🗑️</IconButton>
+      </div>
+    );
   }
 
   return (
-    <Card style={{ marginBottom: "16px" }}>
-      <CardHeader
-        title="Orígenes de leads"
-        action={<IconButton variant="ghost" onClick={() => setOpen(!open)}>{open ? "▲" : "▼"}</IconButton>}
-      />
-      {open ? (
-        <>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 120px auto", gap: "10px", marginBottom: "14px", alignItems: "end" }}>
-            <Input label="Nombre" value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="Meta Ads, Referido, Web..." />
-            <Input label="Orden" value={form.sort_order} onChange={(v) => setForm({ ...form, sort_order: v })} type="number" />
-            <div style={{ display: "flex", gap: "8px", paddingBottom: "12px" }}>
-              <Button onClick={handleSave} disabled={saving}>{editingId ? "Guardar" : "Agregar"}</Button>
-              {editingId ? <Button variant="secondary" onClick={resetForm}>Cancelar</Button> : null}
+    <>
+      <CompactABM title="📡 Canales de Venta" items={items} onAdd={openNew} onEdit={openEdit} onDelete={remove} renderItem={renderItem} />
+      {showForm && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}
+             onClick={(e) => e.target === e.currentTarget && setShowForm(false)}>
+          <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "360px" }}>
+            <h3 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 800 }}>{editing ? "Editar" : "Nuevo"} Canal de Venta</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="Nombre (ej: Local, Domicilio, Digital)" style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
+              <input type="number" value={form.sort_order} min={0}
+                onChange={e => setForm(f => ({ ...f, sort_order: Number(e.target.value) }))}
+                placeholder="Orden" style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
+            </div>
+            <div style={{ display: "flex", gap: "8px", marginTop: "16px" }}>
+              <button onClick={() => setShowForm(false)} style={{ flex: 1, padding: "8px", borderRadius: "8px", border: "1px solid #ddd", background: "#fff", cursor: "pointer" }}>Cancelar</button>
+              <button onClick={handleSave} disabled={saving} style={{ flex: 1, padding: "8px", borderRadius: "8px", border: "none", background: "#1a1a2e", color: "#fff", cursor: "pointer", fontWeight: 700 }}>{saving ? "..." : "Guardar"}</button>
             </div>
           </div>
-
-          {loading ? <Loading /> : (
-            <div style={{ display: "grid", gap: "8px" }}>
-              {items.map((item) => (
-                <div key={item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", border: "1px solid #eee", borderRadius: "10px", padding: "10px 12px" }}>
-                  <div>
-                    <div style={{ fontWeight: 600 }}>{item.name}</div>
-                    <div style={{ fontSize: "12px", color: "#888" }}>Orden: {item.sort_order ?? 0}</div>
-                  </div>
-                  <div style={{ display: "flex", gap: "8px" }}>
-                    <IconButton variant="secondary" title="Editar" onClick={() => startEdit(item)}>✏️</IconButton>
-                    <IconButton variant="danger" title="Eliminar" onClick={() => remove(item.id)}>🗑️</IconButton>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      ) : null}
-    </Card>
+        </div>
+      )}
+    </>
   );
 }
 
-function InsumosABM() {
+// ─── ESTADOS DE VENTA ─────────────────────────────
+function OrderStatusesABM() {
+  const [items, setItems] = useState<OrderStatus[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<OrderStatus | null>(null);
+  const [form, setForm] = useState({ name: "", color: "#888888", sort_order: 0 });
+  const [saving, setSaving] = useState(false);
+
+  function load() {
+    setLoading(true);
+    fetchJson<OrderStatus[]>("/order-statuses").then(setItems).catch(console.error).finally(() => setLoading(false));
+  }
+  useEffect(() => { load(); }, []);
+  function openNew() { setEditing(null); setForm({ name: "", color: "#888888", sort_order: items.length + 1 }); setShowForm(true); }
+  function openEdit(s: OrderStatus) { setEditing(s); setForm({ name: s.name, color: s.color || "#888888", sort_order: s.sort_order || 0 }); setShowForm(true); }
+  async function handleSave() {
+    if (!form.name.trim()) return;
+    setSaving(true);
+    try {
+      if (editing) await putJson("/order-statuses/" + editing.id, form);
+      else await postJson("/order-statuses", form);
+      setShowForm(false); load();
+    } catch (e) { console.error(e); } finally { setSaving(false); }
+  }
+  async function remove(id: number) { if (!confirm("Eliminar?")) return; try { await deleteJson("/order-statuses/" + id); load(); } catch (e) { console.error(e); } }
+  function renderItem(s: OrderStatus) {
+    return (
+      <div key={s.id} style={{ padding: "5px 0", borderBottom: "1px solid #f5", fontSize: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
+        <span style={{ width: "14px", height: "14px", borderRadius: "50%", background: s.color || "#888", display: "inline-block", flexShrink: 0 }} />
+        <span style={{ flex: 1, fontWeight: 600 }}>{s.name}</span>
+        <IconButton variant="ghost" title="Editar" onClick={() => openEdit(s)}>✏️</IconButton>
+        <IconButton variant="danger" title="Eliminar" onClick={() => remove(s.id)}>🗑️</IconButton>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <CompactABM title="🏁 Estados de Venta" items={items} onAdd={openNew} onEdit={openEdit} onDelete={remove} renderItem={renderItem} />
+      {showForm && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}
+             onClick={(e) => e.target === e.currentTarget && setShowForm(false)}>
+          <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "360px" }}>
+            <h3 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 800 }}>{editing ? "Editar" : "Nuevo"} Estado de Venta</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="Nombre (ej: Pedido, En Proceso, Entregado)" style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <label style={{ fontSize: "13px", color: "#666" }}>Color:</label>
+                <input type="color" value={form.color} onChange={e => setForm(f => ({ ...f, color: e.target.value }))}
+                  style={{ width: "50px", height: "34px", borderRadius: "6px", border: "1px solid #ddd", cursor: "pointer" }} />
+                <span style={{ fontSize: "12px", color: "#888" }}>{form.color}</span>
+              </div>
+              <input type="number" value={form.sort_order} min={0}
+                onChange={e => setForm(f => ({ ...f, sort_order: Number(e.target.value) }))}
+                placeholder="Orden" style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
+            </div>
+            <div style={{ display: "flex", gap: "8px", marginTop: "16px" }}>
+              <button onClick={() => setShowForm(false)} style={{ flex: 1, padding: "8px", borderRadius: "8px", border: "1px solid #ddd", background: "#fff", cursor: "pointer" }}>Cancelar</button>
+              <button onClick={handleSave} disabled={saving} style={{ flex: 1, padding: "8px", borderRadius: "8px", border: "none", background: "#1a1a2e", color: "#fff", cursor: "pointer", fontWeight: 700 }}>{saving ? "..." : "Guardar"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ─── ESTADOS DE PAGO ──────────────────────────────
+function PaymentStatusesABM() {
+  const [items, setItems] = useState<PaymentStatus[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<PaymentStatus | null>(null);
+  const [form, setForm] = useState({ name: "", color: "#888888", sort_order: 0 });
+  const [saving, setSaving] = useState(false);
+
+  function load() {
+    setLoading(true);
+    fetchJson<PaymentStatus[]>("/payment-statuses").then(setItems).catch(console.error).finally(() => setLoading(false));
+  }
+  useEffect(() => { load(); }, []);
+  function openNew() { setEditing(null); setForm({ name: "", color: "#888888", sort_order: items.length + 1 }); setShowForm(true); }
+  function openEdit(s: PaymentStatus) { setEditing(s); setForm({ name: s.name, color: s.color || "#888888", sort_order: s.sort_order || 0 }); setShowForm(true); }
+  async function handleSave() {
+    if (!form.name.trim()) return;
+    setSaving(true);
+    try {
+      if (editing) await putJson("/payment-statuses/" + editing.id, form);
+      else await postJson("/payment-statuses", form);
+      setShowForm(false); load();
+    } catch (e) { console.error(e); } finally { setSaving(false); }
+  }
+  async function remove(id: number) { if (!confirm("Eliminar?")) return; try { await deleteJson("/payment-statuses/" + id); load(); } catch (e) { console.error(e); } }
+  function renderItem(s: PaymentStatus) {
+    return (
+      <div key={s.id} style={{ padding: "5px 0", borderBottom: "1px solid #f5", fontSize: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
+        <span style={{ width: "14px", height: "14px", borderRadius: "50%", background: s.color || "#888", display: "inline-block", flexShrink: 0 }} />
+        <span style={{ flex: 1, fontWeight: 600 }}>{s.name}</span>
+        <IconButton variant="ghost" title="Editar" onClick={() => openEdit(s)}>✏️</IconButton>
+        <IconButton variant="danger" title="Eliminar" onClick={() => remove(s.id)}>🗑️</IconButton>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <CompactABM title="💰 Estados de Pago" items={items} onAdd={openNew} onEdit={openEdit} onDelete={remove} renderItem={renderItem} />
+      {showForm && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}
+             onClick={(e) => e.target === e.currentTarget && setShowForm(false)}>
+          <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "360px" }}>
+            <h3 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 800 }}>{editing ? "Editar" : "Nuevo"} Estado de Pago</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="Nombre (ej: Impago, Cobrado Parcial, Cobrado)" style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <label style={{ fontSize: "13px", color: "#666" }}>Color:</label>
+                <input type="color" value={form.color} onChange={e => setForm(f => ({ ...f, color: e.target.value }))}
+                  style={{ width: "50px", height: "34px", borderRadius: "6px", border: "1px solid #ddd", cursor: "pointer" }} />
+                <span style={{ fontSize: "12px", color: "#888" }}>{form.color}</span>
+              </div>
+              <input type="number" value={form.sort_order} min={0}
+                onChange={e => setForm(f => ({ ...f, sort_order: Number(e.target.value) }))}
+                placeholder="Orden" style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
+            </div>
+            <div style={{ display: "flex", gap: "8px", marginTop: "16px" }}>
+              <button onClick={() => setShowForm(false)} style={{ flex: 1, padding: "8px", borderRadius: "8px", border: "1px solid #ddd", background: "#fff", cursor: "pointer" }}>Cancelar</button>
+              <button onClick={handleSave} disabled={saving} style={{ flex: 1, padding: "8px", borderRadius: "8px", border: "none", background: "#1a1a2e", color: "#fff", cursor: "pointer", fontWeight: 700 }}>{saving ? "..." : "Guardar"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ─── INSUMOS ─────────────────────────────────────
+function InputItemsABM() {
   const [items, setItems] = useState<InputItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<InputItem | null>(null);
-  const [form, setForm] = useState({ name: "", unit: "unidad", default_cost: "" });
+  const [form, setForm] = useState({ name: "", unit: "unidades", default_cost: "" });
   const [saving, setSaving] = useState(false);
 
   function load() {
@@ -399,13 +495,8 @@ function InsumosABM() {
     fetchJson<InputItem[]>("/input-items").then(setItems).catch(console.error).finally(() => setLoading(false));
   }
   useEffect(() => { load(); }, []);
-
-  function openNew() { setEditing(null); setForm({ name: "", unit: "unidad", default_cost: "" }); setShowForm(true); }
-  function openEdit(i: InputItem) {
-    setEditing(i);
-    setForm({ name: i.name || "", unit: i.unit || "unidad", default_cost: String(i.default_cost || "") });
-    setShowForm(true);
-  }
+  function openNew() { setEditing(null); setForm({ name: "", unit: "unidades", default_cost: "" }); setShowForm(true); }
+  function openEdit(i: InputItem) { setEditing(i); setForm({ name: i.name, unit: i.unit || "unidades", default_cost: String(i.default_cost || "") }); setShowForm(true); }
   async function handleSave() {
     if (!form.name.trim()) return;
     setSaving(true);
@@ -419,10 +510,9 @@ function InsumosABM() {
   async function remove(id: number) { if (!confirm("Eliminar?")) return; try { await deleteJson("/input-items/" + id); load(); } catch (e) { console.error(e); } }
   function renderItem(i: InputItem) {
     return (
-      <div key={i.id} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "5px 0", borderBottom: "1px solid #f5", fontSize: "12px" }}>
-        <span style={{ flex: 1 }}>🧵 {i.name}</span>
-        <span style={{ fontSize: "10px", color: "#aaa" }}>{i.unit}</span>
-        <span style={{ fontSize: "11px", color: "#6c63ff", fontWeight: 600 }}>${Number(i.default_cost).toLocaleString("es-AR")}</span>
+      <div key={i.id} style={{ padding: "5px 0", borderBottom: "1px solid #f5", fontSize: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
+        <span style={{ flex: 1, fontWeight: 600 }}>{i.name}</span>
+        <span style={{ fontSize: "11px", color: "#888" }}>{i.unit} · ${Number(i.default_cost || 0).toLocaleString("es-AR")}</span>
         <IconButton variant="ghost" title="Editar" onClick={() => openEdit(i)}>✏️</IconButton>
         <IconButton variant="danger" title="Eliminar" onClick={() => remove(i.id)}>🗑️</IconButton>
       </div>
@@ -431,19 +521,24 @@ function InsumosABM() {
 
   return (
     <>
-      {loading ? <Loading /> : <CompactABM title="🧵 Insumos" items={items} onAdd={openNew} onEdit={openEdit} onDelete={remove} renderItem={renderItem} />}
+      <CompactABM title="🧴 Insumos" items={items} onAdd={openNew} onEdit={openEdit} onDelete={remove} renderItem={renderItem} />
       {showForm && (
-        <div style={overlayStyle} onClick={(e) => { if (e.target === e.currentTarget) setShowForm(false); }}>
-          <div style={modalStyle}>
-            <h3 style={{ fontSize: "15px", fontWeight: 700, marginBottom: "16px" }}>{editing ? "✏️ Editar insumo" : "🧵 Nuevo insumo"}</h3>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-              <Input label="Nombre" value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="Tela, Hilo, Embalaje..." />
-              <Input label="Unidad" value={form.unit} onChange={(v) => setForm({ ...form, unit: v })} placeholder="metro, rollo, hora..." />
-              <Input label="Costo default" value={form.default_cost} onChange={(v) => setForm({ ...form, default_cost: v })} placeholder="0.00" type="number" />
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}
+             onClick={(e) => e.target === e.currentTarget && setShowForm(false)}>
+          <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "360px" }}>
+            <h3 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 800 }}>{editing ? "Editar" : "Nuevo"} Insumo</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="Nombre" style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
+              <input value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}
+                placeholder="Unidad (ej: kg, litros)" style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
+              <input type="number" value={form.default_cost} min={0}
+                onChange={e => setForm(f => ({ ...f, default_cost: e.target.value }))}
+                placeholder="Costo default" style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
             </div>
-            <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: "16px" }}>
-              <Button variant="secondary" onClick={() => setShowForm(false)}>Cancelar</Button>
-              <Button onClick={handleSave} disabled={saving}>{saving ? "Guardando..." : "Guardar"}</Button>
+            <div style={{ display: "flex", gap: "8px", marginTop: "16px" }}>
+              <button onClick={() => setShowForm(false)} style={{ flex: 1, padding: "8px", borderRadius: "8px", border: "1px solid #ddd", background: "#fff", cursor: "pointer" }}>Cancelar</button>
+              <button onClick={handleSave} disabled={saving} style={{ flex: 1, padding: "8px", borderRadius: "8px", border: "none", background: "#1a1a2e", color: "#fff", cursor: "pointer", fontWeight: 700 }}>{saving ? "..." : "Guardar"}</button>
             </div>
           </div>
         </div>
@@ -452,19 +547,24 @@ function InsumosABM() {
   );
 }
 
+// ─── MAIN ─────────────────────────────────────────
 export default function ParametrosPage() {
   return (
-    <div style={{ maxWidth: "860px" }}>
+    <div>
       <PageTitle>⚙️ Parámetros</PageTitle>
-      <div style={{ background: "linear-gradient(135deg, #6c63ff15, #1a1a2e08)", border: "1px solid #6c63ff30", borderRadius: "12px", padding: "14px 18px", marginBottom: "20px", fontSize: "12px", color: "#666", lineHeight: "1.5" }}>
-        <strong style={{ color: "#6c63ff" }}>Configurá los parámetros de tu negocio.</strong><br />
-        Hacé click en ▲/▼ para expandir o colapsar cada sección.
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: "0 16px" }}>
+        <div>
+          <PaymentMethodsABM />
+          <CategoriesABM />
+          <BrandsABM />
+        </div>
+        <div>
+          <SaleChannelsABM />
+          <OrderStatusesABM />
+          <PaymentStatusesABM />
+          <InputItemsABM />
+        </div>
       </div>
-      <PaymentMethodsABM />
-      <CategoriesABM />
-      <BrandsABM />
-      <LeadSourcesABM />
-      <InsumosABM />
     </div>
   );
 }

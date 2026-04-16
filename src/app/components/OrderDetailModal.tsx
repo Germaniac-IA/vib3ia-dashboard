@@ -1,244 +1,261 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchJson, formatDate, formatDateInput, money, putJson } from "../lib";
-import type { Client, Order, OrderDetail, OrderItem, Product } from "../types";
-import styles from "../page.module.css";
+import { fetchJson, postJson, putJson, deleteJson, money } from "../lib";
+import type { OrderDetail, OrderStatus, PaymentStatus, SaleChannel, OrderPayment } from "../types";
 
-type OrderItemDraft = { productId: string; quantity: string; price: string };
+type SaleChannel = { id: number; name: string; sort_order: number };
+type OrderStatus = { id: number; name: string; color: string; sort_order: number };
+type PaymentStatus = { id: number; name: string; color: string; sort_order: number };
 
 type Props = {
   orderId: number;
+  orderStatuses: OrderStatus[];
+  paymentStatuses: PaymentStatus[];
+  saleChannels: SaleChannel[];
   onClose: () => void;
   onUpdated: () => void;
 };
 
-const PAYMENT_METHODS = [
-  { value: "mercadopago", label: "Mercado Pago" },
-  { value: "efectivo", label: "Efectivo" },
-  { value: "transferencia", label: "Transferencia" },
-];
-
-export default function OrderDetailModal({ orderId, onClose, onUpdated }: Props) {
-  const [detail, setDetail] = useState<OrderDetail | null>(null);
-  const [products, setProducts] = useState<Product[]>([]);
-
-  // Edit fields
-  const [orderStatus, setOrderStatus] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("");
-  const [paymentStatus, setPaymentStatus] = useState("");
-  const [itemDrafts, setItemDrafts] = useState<OrderItemDraft[]>([]);
-  const [deliveryAddress, setDeliveryAddress] = useState("");
-  const [scheduledDate, setScheduledDate] = useState("");
-  const [scheduledTime, setScheduledTime] = useState("");
-  const [deliveryFee, setDeliveryFee] = useState("");
-  const [notes, setNotes] = useState("");
-
+export default function OrderDetailModal({
+  orderId, orderStatuses, paymentStatuses, saleChannels, onClose, onUpdated
+}: Props) {
+  const [order, setOrder] = useState<OrderDetail | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const [orderStatusId, setOrderStatusId] = useState("");
+  const [paymentStatusId, setPaymentStatusId] = useState("");
+  const [showPayForm, setShowPayForm] = useState(false);
+  const [payAmount, setPayAmount] = useState("");
+  const [payMethodId, setPayMethodId] = useState("");
+
   useEffect(() => {
-    Promise.all([
-      fetchJson<OrderDetail>(`/orders/${orderId}`),
-      fetchJson<Product[]>("/products"),
-    ]).then(([d, productData]) => {
-      setDetail(d);
-      setProducts(productData);
-      setOrderStatus(d.status || "");
-      setPaymentMethod(d.payment_method || d.payment || "");
-      setPaymentStatus(d.payment_status || "pending");
-      setNotes(d.notes || "");
-      setDeliveryAddress(d.delivery?.address || d.delivery_address || "");
-      setScheduledDate(d.delivery?.scheduled_date || "");
-      setScheduledTime(d.delivery?.scheduled_time || d.scheduled_time || "");
-      setDeliveryFee(d.delivery?.delivery_fee != null ? String(d.delivery.delivery_fee) : d.delivery_fee != null ? String(d.delivery_fee) : "");
-      setItemDrafts(
-        d.items.map((item: OrderItem) => ({
-          productId: String(item.product_id),
-          quantity: String(item.quantity),
-          price: String(item.unit_price),
-        }))
-      );
-    }).catch(() => setError("No se pudo cargar el pedido"));
+    fetchJson<OrderDetail>("/orders/" + orderId)
+      .then(o => {
+        setOrder(o);
+        setOrderStatusId(String(o.order_status_id || ""));
+        setPaymentStatusId(String(o.payment_status_id || ""));
+      })
+      .catch(() => setError("No se pudo cargar la venta"))
+      .finally(() => setLoading(false));
   }, [orderId]);
 
-  function updateItem(index: number, next: Partial<OrderItemDraft>) {
-    setItemDrafts((current) =>
-      current.map((item, i) => {
-        if (i !== index) return item;
-        const product = products.find((p) => String(p.id) === (next.productId ?? item.productId));
-        return {
-          ...item,
-          ...next,
-          price: next.productId && product ? String(product.price) : next.price ?? item.price,
-        };
-      })
-    );
-  }
-
-  async function handleSave() {
-    if (!detail) return;
-    setError("");
+  async function saveStatus() {
+    if (!order) return;
     setSaving(true);
     try {
-      const items = itemDrafts
-        .filter((d) => d.productId)
-        .map((d) => ({
-          product_id: Number(d.productId),
-          quantity: Number(d.quantity),
-          unit_price: Number(d.price),
-        }));
-
-      const payload: Record<string, unknown> = {
-        payment_method: paymentMethod,
-        payment_status: paymentStatus,
-        status: orderStatus,
-        notes,
-        delivery: {
-          address: deliveryAddress,
-          scheduled_date: scheduledDate || null,
-          scheduled_time: scheduledTime || null,
-          delivery_fee: deliveryFee ? Number(deliveryFee) : 0,
-        },
-        items,
-      };
-
-      await putJson<OrderDetail>(`/orders/${orderId}`, payload);
+      await putJson("/orders/" + orderId, {
+        order_status_id: orderStatusId ? Number(orderStatusId) : undefined,
+        payment_status_id: paymentStatusId ? Number(paymentStatusId) : undefined,
+      });
+      const updated = await fetchJson<OrderDetail>("/orders/" + orderId);
+      setOrder(updated);
       onUpdated();
-      onClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al guardar");
-    } finally {
-      setSaving(false);
-    }
+    } catch (e) { console.error(e); }
+    finally { setSaving(false); }
   }
 
-  if (!detail) return null;
+  async function registerPayment() {
+    if (!order || !payAmount) return;
+    setSaving(true);
+    try {
+      await postJson("/orders/" + orderId + "/payments", {
+        amount: Number(payAmount),
+        payment_method_id: payMethodId ? Number(payMethodId) : null,
+      });
+      setShowPayForm(false);
+      setPayAmount("");
+      const updated = await fetchJson<OrderDetail>("/orders/" + orderId);
+      setOrder(updated);
+      onUpdated();
+    } catch (e) { console.error(e); }
+    finally { setSaving(false); }
+  }
 
-  const total = itemDrafts.reduce((acc, d) => acc + Number(d.quantity || 0) * Number(d.price || 0), 0);
+  async function deletePayment(paymentId: number) {
+    if (!confirm("¿Eliminar este pago?")) return;
+    try {
+      await deleteJson("/orders/" + orderId + "/payments/" + paymentId);
+      const updated = await fetchJson<OrderDetail>("/orders/" + orderId);
+      setOrder(updated);
+      onUpdated();
+    } catch (e) { console.error(e); }
+  }
+
+  if (loading) return (
+    <div style={{ background: "#fff", borderRadius: "16px", padding: "40px", textAlign: "center", width: "100%", maxWidth: "600px" }}>
+      <Loading />
+    </div>
+  );
+
+  if (error || !order) return (
+    <div style={{ background: "#fff", borderRadius: "16px", padding: "40px", textAlign: "center", width: "100%", maxWidth: "600px" }}>
+      <p style={{ color: "#e74c3c" }}>{error}</p>
+      <button onClick={onClose} style={{ padding: "8px 20px", borderRadius: "8px", border: "none", background: "#333", color: "#fff", cursor: "pointer" }}>Cerrar</button>
+    </div>
+  );
+
+  const remaining = Number(order.total) - Number(order.payment_paid || 0);
 
   return (
-    <div className={styles.modalOverlay} onClick={onClose}>
-      <div className={styles.modalCard} onClick={(e) => e.stopPropagation()} style={{ maxWidth: 640 }}>
-        <div className={styles.modalHeader}>
-          <h2>Editar Pedido #{detail.order_number || detail.id}</h2>
-          <button className={styles.modalClose} onClick={onClose}>×</button>
-        </div>
-
-        {detail.client && (
-          <div className={styles.infoCard} style={{ marginBottom: 12 }}>
-            <h4>Cliente</h4>
-            <p><strong>{detail.client.name}</strong> — {detail.client.phone}</p>
-            <p>{detail.client.address || "Sin dirección"}</p>
+    <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "700px", maxHeight: "90vh", overflowY: "auto" }}>
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: "20px", fontWeight: 800 }}>{order.order_number}</h2>
+          <div style={{ fontSize: "12px", color: "#888", marginTop: "2px" }}>
+            {order.contact_name || "Sin cliente"}
+            {order.seller_name && ` · Vendedor: ${order.seller_name}`}
           </div>
+          <div style={{ fontSize: "12px", color: "#888" }}>
+            {new Date(order.created_at).toLocaleDateString("es-AR", { day: "2-digit", month: "long", year: "numeric" })}
+          </div>
+        </div>
+        <button onClick={onClose} style={{ background: "none", border: "none", fontSize: "20px", cursor: "pointer", padding: "4px 8px" }}>✕</button>
+      </div>
+
+      {/* Tags de estado */}
+      <div style={{ display: "flex", gap: "8px", marginBottom: "16px", flexWrap: "wrap" }}>
+        <select value={orderStatusId} onChange={e => setOrderStatusId(e.target.value)}
+          style={{ padding: "6px 10px", borderRadius: "8px", border: "2px solid " + (orderStatuses.find(s => String(s.id) === orderStatusId)?.color || "#ddd"), fontSize: "13px", fontWeight: 700, background: "#fff", cursor: "pointer" }}>
+          {orderStatuses.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
+        <select value={paymentStatusId} onChange={e => setPaymentStatusId(e.target.value)}
+          style={{ padding: "6px 10px", borderRadius: "8px", border: "2px solid " + (paymentStatuses.find(s => String(s.id) === paymentStatusId)?.color || "#ddd"), fontSize: "13px", fontWeight: 700, background: "#fff", cursor: "pointer" }}>
+          {paymentStatuses.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
+        {order.sale_channel_name && (
+          <span style={{ padding: "6px 10px", borderRadius: "8px", background: "#f0f0f0", fontSize: "13px", color: "#666" }}>
+            📍 {order.sale_channel_name}
+          </span>
         )}
+        <button onClick={saveStatus} disabled={saving}
+          style={{ padding: "6px 14px", borderRadius: "8px", border: "none", background: "#1a1a2e", color: "#fff", cursor: saving ? "not-allowed" : "pointer", fontSize: "13px", fontWeight: 700 }}>
+          {saving ? "..." : "Guardar"}
+        </button>
+      </div>
 
-        <div style={{ display: "grid", gap: 14 }}>
-          <label className={styles.field}>
-            Medio de pago
-            <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
-              <option value="">Seleccionar</option>
-              {PAYMENT_METHODS.map((m) => (
-                <option key={m.value} value={m.value}>{m.label}</option>
-              ))}
-            </select>
-          </label>
-
-          <label className={styles.field}>
-            Estado del pedido
-            <select value={orderStatus} onChange={(e) => setOrderStatus(e.target.value)}>
-              <option value="pending">Pendiente</option>
-              <option value="confirmed">Confirmado</option>
-              <option value="delivered">Entregado</option>
-              <option value="cancelled">Cancelado</option>
-            </select>
-          </label>
-
-          <label className={styles.field}>
-            Estado del pago
-            <select value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value)}>
-              <option value="pending">Pendiente</option>
-              <option value="paid">Pagado</option>
-              <option value="failed">Fallido</option>
-              <option value="refunded">Reintegrado</option>
-            </select>
-          </label>
-
-          <div className={styles.sectionDivider} style={{ margin: "8px 0 6px" }}>Productos</div>
-
-          {itemDrafts.map((draft, index) => (
-            <div key={index} style={{ display: "grid", gridTemplateColumns: "1.6fr 0.7fr 0.8fr auto", gap: 8, alignItems: "end" }}>
-              <label className={styles.field}>
-                Producto
-                <select value={draft.productId} onChange={(e) => updateItem(index, { productId: e.target.value })}>
-                  <option value="">Seleccionar</option>
-                  {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-              </label>
-              <label className={styles.field}>
-                Cantidad
-                <input type="number" min="1" value={draft.quantity} onChange={(e) => updateItem(index, { quantity: e.target.value })} />
-              </label>
-              <label className={styles.field}>
-                Precio
-                <input type="number" min="0" value={draft.price} onChange={(e) => updateItem(index, { price: e.target.value })} />
-              </label>
-              <button className={styles.ghostButton} type="button" onClick={() => setItemDrafts((c) => c.filter((_, i) => i !== index))}>Quitar</button>
-            </div>
-          ))}
-
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <button className={styles.secondaryButton} type="button" onClick={() => setItemDrafts((c) => [...c, { productId: "", quantity: "1", price: "" }])}>
-              + Agregar producto
-            </button>
-            <div className={styles.summaryBox}>
-              <span>Total</span>
-              <strong>{money(total)}</strong>
+      {/* Resumen financiero */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "8px", marginBottom: "16px" }}>
+        <div style={{ background: "#f8f8f8", borderRadius: "10px", padding: "10px", textAlign: "center" }}>
+          <div style={{ fontSize: "11px", color: "#888", marginBottom: "2px" }}>Subtotal</div>
+          <div style={{ fontWeight: 800, fontSize: "15px" }}>${Number(order.subtotal).toLocaleString("es-AR")}</div>
+        </div>
+        {Number(order.discount_value) > 0 && (
+          <div style={{ background: "#fde8e8", borderRadius: "10px", padding: "10px", textAlign: "center" }}>
+            <div style={{ fontSize: "11px", color: "#888", marginBottom: "2px" }}>Descuento</div>
+            <div style={{ fontWeight: 800, fontSize: "15px", color: "#e74c3c" }}>
+              -{order.discount_type === "percent" ? order.discount_value + "%" : "$" + Number(order.discount_value).toLocaleString("es-AR")}
             </div>
           </div>
-
-          <div className={styles.sectionDivider} style={{ margin: "8px 0 6px" }}>Entrega</div>
-
-          <label className={styles.field}>
-            Dirección
-            <input value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} placeholder="Dirección o 'Retiro en local'" />
-          </label>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 0.8fr", gap: 10 }}>
-            <label className={styles.field}>
-              Fecha
-              <input type="date" value={formatDateInput(scheduledDate)} onChange={(e) => setScheduledDate(e.target.value)} />
-            </label>
-            <label className={styles.field}>
-              Hora
-              <input type="time" value={scheduledTime} onChange={(e) => setScheduledTime(e.target.value)} />
-            </label>
-            <label className={styles.field}>
-              Costo envío
-              <input type="number" min="0" value={deliveryFee} onChange={(e) => setDeliveryFee(e.target.value)} placeholder="0" />
-            </label>
-          </div>
-
-          <label className={styles.field}>
-            Notas
-            <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
-          </label>
-        </div>
-
-        {error && <p style={{ color: "#b91c1c", marginBottom: 12 }}>{error}</p>}
-        {detail.payment_status === "paid" && (
-          <p style={{ color: "#92400e", background: "#fef3c7", padding: "8px 12px", borderRadius: 8, fontSize: 13 }}>
-            ⚠️ Si modificás productos, el pedido volverá a estado <strong>Pendiente</strong> de pago.
-          </p>
         )}
-
-        <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-          <button className={styles.button} type="button" onClick={handleSave} disabled={saving}>
-            {saving ? "Guardando..." : "Guardar cambios"}
-          </button>
-          <button className={styles.secondaryButton} type="button" onClick={onClose}>Cerrar</button>
+        {Number(order.delivery_fee) > 0 && (
+          <div style={{ background: "#f8f8f8", borderRadius: "10px", padding: "10px", textAlign: "center" }}>
+            <div style={{ fontSize: "11px", color: "#888", marginBottom: "2px" }}>Envío</div>
+            <div style={{ fontWeight: 800, fontSize: "15px" }}>${Number(order.delivery_fee).toLocaleString("es-AR")}</div>
+          </div>
+        )}
+        <div style={{ background: "#1a1a2e", borderRadius: "10px", padding: "10px", textAlign: "center" }}>
+          <div style={{ fontSize: "11px", color: "#aaa", marginBottom: "2px" }}>Total</div>
+          <div style={{ fontWeight: 800, fontSize: "15px", color: "#fff" }}>${Number(order.total).toLocaleString("es-AR")}</div>
         </div>
       </div>
+
+      {/* Pago */}
+      <div style={{ background: "#f8f8f8", borderRadius: "10px", padding: "12px", marginBottom: "16px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+          <span style={{ fontWeight: 700, fontSize: "13px" }}>💰 Pagos</span>
+          <button onClick={() => { setShowPayForm(!showPayForm); setPayAmount(String(remaining > 0 ? remaining.toFixed(2) : "")); }}
+            style={{ padding: "4px 12px", borderRadius: "6px", border: "none", background: "#27ae60", color: "#fff", cursor: "pointer", fontSize: "12px", fontWeight: 700 }}>
+            + Registrar Pago
+          </button>
+        </div>
+        {order.payments && order.payments.length > 0 ? (
+          <div>
+            {order.payments.map((p: OrderPayment) => (
+              <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "1px solid #e0e0e0", fontSize: "13px" }}>
+                <span>
+                  <b>${Number(p.amount).toLocaleString("es-AR")}</b>
+                  {p.payment_method_name && <span style={{ color: "#888", marginLeft: "6px" }}>{p.payment_method_name}</span>}
+                  <span style={{ color: "#aaa", fontSize: "11px", marginLeft: "6px" }}>
+                    {new Date(p.paid_at).toLocaleDateString("es-AR")}
+                  </span>
+                </span>
+                <button onClick={() => deletePayment(p.id)} style={{ background: "none", border: "none", color: "#e74c3c", cursor: "pointer", fontSize: "12px", padding: "2px 6px" }}>✕</button>
+              </div>
+            ))}
+          </div>
+        ) : <div style={{ fontSize: "12px", color: "#999" }}>Sin pagos registrados</div>}
+
+        {showPayForm && (
+          <div style={{ display: "flex", gap: "8px", marginTop: "8px", alignItems: "center" }}>
+            <input type="number" value={payAmount} min={0} step="0.01"
+              onChange={e => setPayAmount(e.target.value)}
+              placeholder="Monto"
+              style={{ flex: 1, padding: "6px 10px", borderRadius: "6px", border: "1px solid #ddd", fontSize: "13px" }} />
+            <select value={payMethodId} onChange={e => setPayMethodId(e.target.value)}
+              style={{ padding: "6px 10px", borderRadius: "6px", border: "1px solid #ddd", fontSize: "13px" }}>
+              <option value="">Método</option>
+              <option value="1">Efectivo</option>
+              <option value="2">Mercado Pago</option>
+              <option value="3">Transferencia</option>
+            </select>
+            <button onClick={registerPayment} disabled={saving}
+              style={{ padding: "6px 12px", borderRadius: "6px", border: "none", background: "#27ae60", color: "#fff", cursor: "pointer", fontSize: "13px" }}>
+              {saving ? "..." : "OK"}
+            </button>
+            <button onClick={() => setShowPayForm(false)}
+              style={{ padding: "6px 10px", borderRadius: "6px", border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontSize: "13px" }}>
+              Cancelar
+            </button>
+          </div>
+        )}
+
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px", fontSize: "13px", fontWeight: 700 }}>
+          <span>Cobrado: <span style={{ color: "#27ae60" }}>${Number(order.payment_paid || 0).toLocaleString("es-AR")}</span></span>
+          {remaining > 0 && <span style={{ color: "#f39c12" }}>Pendiente: ${remaining.toLocaleString("es-AR")}</span>}
+          {remaining <= 0 && <span style={{ color: "#27ae60" }}>✓ Cancelado</span>}
+        </div>
+      </div>
+
+      {/* Items */}
+      <div style={{ marginBottom: "16px" }}>
+        <div style={{ fontWeight: 700, fontSize: "13px", marginBottom: "6px" }}>📦 Items</div>
+        {order.items && order.items.length > 0 ? (
+          <div style={{ border: "1px solid #eee", borderRadius: "8px", overflow: "hidden" }}>
+            {order.items.map((item: any, idx: number) => (
+              <div key={idx} style={{ display: "flex", justifyContent: "space-between", padding: "8px 12px", borderBottom: idx < order.items.length - 1 ? "1px solid #f0" : "none", fontSize: "13px" }}>
+                <span>{item.quantity} × {item.product_name}</span>
+                <span style={{ fontWeight: 700 }}>${Number(item.subtotal).toLocaleString("es-AR")}</span>
+              </div>
+            ))}
+          </div>
+        ) : <div style={{ fontSize: "12px", color: "#999" }}>Sin items</div>}
+      </div>
+
+      {/* Delivery */}
+      {order.delivery && (
+        <div style={{ background: "#f8f8f8", borderRadius: "8px", padding: "12px", marginBottom: "16px" }}>
+          <div style={{ fontWeight: 700, fontSize: "13px", marginBottom: "6px" }}>🚚 Entrega</div>
+          <div style={{ fontSize: "13px" }}>
+            {order.delivery.address && <div>📍 {order.delivery.address}{order.delivery.location && `, ${order.delivery.location}`}</div>}
+            {order.delivery.scheduled_date && (
+              <div style={{ marginTop: "4px" }}>📅 {new Date(order.delivery.scheduled_date + "T00:00:00").toLocaleDateString("es-AR")}
+                {order.delivery.scheduled_time && ` · ${order.delivery.scheduled_time}`}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Notas */}
+      {order.notes && (
+        <div style={{ fontSize: "13px", color: "#666", fontStyle: "italic", padding: "8px 0", borderTop: "1px solid #eee" }}>
+          {order.notes}
+        </div>
+      )}
     </div>
   );
 }

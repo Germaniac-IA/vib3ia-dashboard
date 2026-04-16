@@ -33,10 +33,12 @@ export type Client = {
 };
 
 export type OrderItem = {
+  id?: number;
   product_id: number;
   product_name: string;
   quantity: number;
   unit_price: number;
+  subtotal: number;
 };
 
 export type Order = {
@@ -60,9 +62,108 @@ export type Order = {
   delivered_date?: string;
 };
 
-export type OrderDetail = Order & {
-  client: Client;
+export type OrderDetail = {
+  id: number;
+  order_number: string;
+  client_id: number;
+  contact_id: number;
+  contact_name: string;
+  contact_phone: string;
+  contact_email: string;
+  seller_id: number;
+  seller_name: string;
+  seller_rol: string;
+  sale_channel_id: number;
+  sale_channel_name: string;
+  subtotal: number;
+  discount_type: string;
+  discount_value: number;
+  delivery_fee: number;
+  total: number;
+  payment_method_id: number;
+  payment_method_name: string;
+  order_status_id: number;
+  order_status_name: string;
+  order_status_color: string;
+  payment_status_id: number;
+  payment_status_name: string;
+  payment_status_color: string;
+  payment_paid: number;
+  payment_pending: number;
+  notes: string;
   items: OrderItem[];
+  payments: OrderPayment[];
+  delivery: Delivery | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SaleChannel = {
+  id: number;
+  client_id: number;
+  name: string;
+  is_active: boolean;
+  sort_order: number;
+};
+
+export type OrderStatus = {
+  id: number;
+  client_id: number;
+  name: string;
+  color: string;
+  sort_order: number;
+  is_active: boolean;
+};
+
+export type PaymentStatus = {
+  id: number;
+  client_id: number;
+  name: string;
+  color: string;
+  sort_order: number;
+  is_active: boolean;
+};
+
+export type OrderPayment = {
+  id: number;
+  order_id: number;
+  amount: number;
+  payment_method_id: number;
+  payment_method_name: string;
+  paid_at: string;
+  created_at: string;
+};
+
+export type Delivery = {
+  id?: number;
+  address: string;
+  location: string;
+  scheduled_date: string;
+  scheduled_time: string;
+  delivery_fee: number;
+  notes: string;
+  status: string;
+  delivered_date: string;
+};
+
+export type User = {
+  id: number;
+  client_id: number;
+  username: string;
+  name: string;
+  rol: "admin" | "manager" | "operator";
+};
+
+export type Contact = {
+  id: number;
+  name: string;
+  phone: string;
+  email: string;
+  whatsapp: string;
+  instagram: string;
+  address: string;
+  city: string;
+  notes: string;
 };
 
 export type Lead = {
@@ -102,12 +203,6 @@ export type Complaint = {
   description: string;
   status: "open" | "investigating" | "resolved";
   created_at: string;
-};
-
-export type User = {
-  id: number;
-  username: string;
-  role: "admin" | "operator";
 };
 
 export type DashboardSummary = {
