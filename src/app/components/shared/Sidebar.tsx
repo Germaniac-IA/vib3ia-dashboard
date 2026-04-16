@@ -34,6 +34,14 @@ const NAV_STRUCTURE: NavSection[] = [
       { label: "Entregas", icon: "🚚", href: "/entregas" },
     ],
   },
+  {
+    title: "CAJA",
+    items: [
+      { label: "Cobros", icon: "💰", href: "/cobros" },
+      { label: "Pagos", icon: "💸", href: "/pagos" },
+      { label: "Compras", icon: "📥", href: "/compras" },
+    ],
+  },
 ];
 
 export default function Sidebar({
