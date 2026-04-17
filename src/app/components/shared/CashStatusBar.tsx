@@ -44,7 +44,7 @@ function authHeaders() {
     setOpening(true);
     try {
       // Check for other open sessions
-      const r = await fetch(`http://149.50.148.131:4000/api/cash-sessions/open`);
+      const r = await fetch(`http://149.50.148.131:4000/api/cash-sessions/open`, { headers: authHeaders() });
       const others = await r.json();
       if (others.length > 0) {
         setOpenSessions(others);
@@ -54,7 +54,7 @@ function authHeaders() {
         // Open own session
         const r2 = await fetch(`http://149.50.148.131:4000/api/cash-sessions`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
           body: JSON.stringify({ initial_amount: 0 }),
         });
         if (r2.ok) {
@@ -82,7 +82,7 @@ function authHeaders() {
     try {
       const r = await fetch(`http://149.50.148.131:4000/api/cash-sessions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
         body: JSON.stringify({ initial_amount: 0 }),
       });
       if (r.ok) {
