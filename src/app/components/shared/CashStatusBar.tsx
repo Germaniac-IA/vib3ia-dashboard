@@ -72,7 +72,7 @@ function authHeaders() {
   }
 
   async function handleJoin(id: number) {
-    await fetch(`http://149.50.148.131:4000/api/cash-sessions/${id}/join`, { method: 'POST' });
+    await fetch(`http://149.50.148.131:4000/api/cash-sessions/${id}/join`, { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()) });
     setShowOpen(false);
     load();
   }
