@@ -276,6 +276,7 @@ export default function VentasPage() {
                     {o.payment_paid > 0 && Number(o.payment_paid) < Number(o.total) && (
                       <span style={{ fontSize: "12px", color: "#f39c12" }}>
                         · ${Number(o.payment_paid).toLocaleString("es-AR")} cobrado
+                        <span style={{ color: "#e74c3c" }}> (resta ${Number(o.total - o.payment_paid).toLocaleString("es-AR")})</span>
                       </span>
                     )}
                     <span style={{ fontSize: "11px", color: "#aaa" }}>({itemCount(o)} items)</span>
