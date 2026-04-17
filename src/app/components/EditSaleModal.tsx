@@ -68,7 +68,7 @@ export default function EditSaleModal({ orderId, saleChannels, orderStatuses, pa
         notes: o.notes || "",
         delivery_address: o.delivery?.address || "",
         delivery_location: o.delivery?.location || "",
-        scheduled_date: o.delivery?.scheduled_date || "",
+        scheduled_date: o.delivery?.scheduled_date ? String(o.delivery.scheduled_date).split('T')[0] : "",
         scheduled_time: o.delivery?.scheduled_time || "",
         delivery_fee: String(o.delivery_fee || "0"),
         discount_type: o.discount_type || "",
