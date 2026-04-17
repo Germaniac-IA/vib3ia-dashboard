@@ -32,6 +32,7 @@ export default function EditPurchaseOrderModal({ orderId, onClose, onUpdated }: 
   const [provSearch, setProvSearch] = useState("");
   const [pSearch, setPSearch] = useState("");
   const [iiSearch, setIiSearch] = useState("");
+  const [showProviderDropdown, setShowProviderDropdown] = useState(false);
   const [tab, setTab] = useState<"products" | "insumos">("products");
   const [showNewProvider, setShowNewProvider] = useState(false);
   const [showNewProduct, setShowNewProduct] = useState(false);
@@ -59,6 +60,7 @@ export default function EditPurchaseOrderModal({ orderId, onClose, onUpdated }: 
         discount_value: String(order.discount_value || ""),
       });
       setProvSearch(order.provider_name || "");
+      setShowProviderDropdown(false);
       if (order.items) {
         setItems(order.items.map((i: any) => ({
           id: i.id,
@@ -98,8 +100,10 @@ export default function EditPurchaseOrderModal({ orderId, onClose, onUpdated }: 
   function updateItemQty(idx: number, qty: number) { const v = [...items]; v[idx].quantity = qty; setItems(v); }
   function updateItemPrice(idx: number, price: number) { const v = [...items]; v[idx].unit_price = price; setItems(v); }
 
-  const fp = products.filter(p => !pSearch || p.name.toLowerCase().includes(pSearch.toLowerCase()));
-  const fi = inputItems.filter(i => !iiSearch || i.name.toLowerCase().includes(iiSearch.toLowerCase()));
+  const productQuery = pSearch.trim().toLowerCase();
+  const inputQuery = iiSearch.trim().toLowerCase();
+  const fp = productQuery ? products.filter(p => p.name.toLowerCase().includes(productQuery)) : [];
+  const fi = inputQuery ? inputItems.filter(i => i.name.toLowerCase().includes(inputQuery)) : [];
 
   const subtotal = items.reduce((s, i) => s + i.quantity * i.unit_price, 0);
   let disc = 0;
@@ -113,6 +117,7 @@ export default function EditPurchaseOrderModal({ orderId, onClose, onUpdated }: 
       const created = await postJson<Provider>("/providers", newProvider);
       setForm(prev => ({ ...prev, provider_id: String(created.id) }));
       setProvSearch(created.name);
+      setShowProviderDropdown(false);
       setShowNewProvider(false);
       setNewProvider({ name: "", business_name: "", tax_id: "", phone: "", whatsapp: "", email: "" });
     } catch (e) { alert("Error al crear proveedor"); }
@@ -176,12 +181,16 @@ export default function EditPurchaseOrderModal({ orderId, onClose, onUpdated }: 
               <label style={{ fontSize: "12px", fontWeight: 700, color: "#666" }}>Proveedor</label>
               <button onClick={() => setShowNewProvider(true)} style={{ fontSize: "11px", background: "none", border: "1px solid #27ae60", color: "#27ae60", padding: "2px 8px", borderRadius: "4px", cursor: "pointer" }}>➕ Nuevo</button>
             </div>
-            <input value={provSearch} onChange={e => { setProvSearch(e.target.value); loadProviders(e.target.value); }} placeholder="Buscar proveedor..." style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
-            {providers.length > 0 && providers.map(p => (
-              <div key={p.id} onClick={() => { setF("provider_id", String(p.id)); setProvSearch(p.name); setProviders([]); }} style={{ padding: "8px 12px", borderBottom: "1px solid #f0", cursor: "pointer", fontSize: "13px" }}>
-                <b>{p.name}</b> {p.business_name && <span style={{ color: "#888" }}>· {p.business_name}</span>}
-              </div>
-            ))}
+            <input value={provSearch} onChange={e => { setProvSearch(e.target.value); setShowProviderDropdown(true); loadProviders(e.target.value); }} onBlur={() => setTimeout(() => setShowProviderDropdown(false), 200)} placeholder="Buscar proveedor..." style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
+            {showProviderDropdown && provSearch.trim() ? (
+              providers.length > 0 ? providers.map(p => (
+                <div key={p.id} onClick={() => { setF("provider_id", String(p.id)); setProvSearch(p.name); setShowProviderDropdown(false); setProviders([]); }} style={{ padding: "8px 12px", borderBottom: "1px solid #f0", cursor: "pointer", fontSize: "13px" }}>
+                  <b>{p.name}</b> {p.business_name && <span style={{ color: "#888" }}>· {p.business_name}</span>}
+                </div>
+              )) : (
+                <div style={{ padding: "8px 12px", color: "#888", fontSize: "12px" }}>No se encontraron proveedores</div>
+              )
+            ) : null}
           </div>
         ) : (
           <div style={{ marginBottom: "12px", padding: "12px", background: "#f8fff8", borderRadius: "8px", border: "1px solid #27ae60" }}>
@@ -208,12 +217,18 @@ export default function EditPurchaseOrderModal({ orderId, onClose, onUpdated }: 
         {tab === "products" && !showNewProduct && (
           <div style={{ marginBottom: "12px" }}>
             <button onClick={() => setShowNewProduct(true)} style={{ fontSize: "11px", background: "none", border: "1px solid #27ae60", color: "#27ae60", padding: "2px 8px", borderRadius: "4px", cursor: "pointer", marginBottom: "4px" }}>➕ Nuevo</button>
-            <input value={pSearch} onChange={e => setPSearch(e.target.value)} placeholder="Buscar producto..." style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
-            {fp.slice(0, 10).map(p => (
-              <div key={p.id} onClick={() => { addItem(p, "product"); setPSearch(""); }} style={{ padding: "8px 12px", borderBottom: "1px solid #f0", cursor: "pointer", display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
-                <span>{p.name}</span><span style={{ fontWeight: 700, color: "#888" }}>${Number(p.price).toLocaleString("es-AR")}</span>
-              </div>
-            ))}
+            <input value={pSearch} onChange={e => setPSearch(e.target.value)} placeholder={`Buscar entre ${products.length} productos...`} style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
+            {!productQuery ? (
+              <div style={{ padding: "8px 12px", color: "#888", fontSize: "12px" }}>Empezá a escribir para buscar productos</div>
+            ) : fp.length > 0 ? (
+              fp.slice(0, 6).map(p => (
+                <div key={p.id} onClick={() => { addItem(p, "product"); setPSearch(""); }} style={{ padding: "8px 12px", borderBottom: "1px solid #f0", cursor: "pointer", display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
+                  <span>{p.name}</span><span style={{ fontWeight: 700, color: "#888" }}>${Number(p.price).toLocaleString("es-AR")}</span>
+                </div>
+              ))
+            ) : (
+              <div style={{ padding: "8px 12px", color: "#888", fontSize: "12px" }}>No se encontraron productos</div>
+            )}
           </div>
         )}
 
@@ -234,13 +249,19 @@ export default function EditPurchaseOrderModal({ orderId, onClose, onUpdated }: 
         {tab === "insumos" && !showNewInsumo && (
           <div style={{ marginBottom: "12px" }}>
             <button onClick={() => setShowNewInsumo(true)} style={{ fontSize: "11px", background: "none", border: "1px solid #27ae60", color: "#27ae60", padding: "2px 8px", borderRadius: "4px", cursor: "pointer", marginBottom: "4px" }}>➕ Nuevo</button>
-            <input value={iiSearch} onChange={e => setIiSearch(e.target.value)} placeholder="Buscar insumo..." style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
-            {fi.slice(0, 10).map(i => (
-              <div key={i.id} onClick={() => { addItem(i, "input_item"); setIiSearch(""); }} style={{ padding: "8px 12px", borderBottom: "1px solid #f0", cursor: "pointer", display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
-                <span>{i.name} <span style={{ fontSize: "11px", color: "#888" }}>({i.unit})</span></span>
-                <span style={{ fontWeight: 700, color: "#888" }}>${Number(i.default_cost).toLocaleString("es-AR")}</span>
-              </div>
-            ))}
+            <input value={iiSearch} onChange={e => setIiSearch(e.target.value)} placeholder={`Buscar entre ${inputItems.length} insumos...`} style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
+            {!inputQuery ? (
+              <div style={{ padding: "8px 12px", color: "#888", fontSize: "12px" }}>Empezá a escribir para buscar insumos</div>
+            ) : fi.length > 0 ? (
+              fi.slice(0, 6).map(i => (
+                <div key={i.id} onClick={() => { addItem(i, "input_item"); setIiSearch(""); }} style={{ padding: "8px 12px", borderBottom: "1px solid #f0", cursor: "pointer", display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
+                  <span>{i.name} <span style={{ fontSize: "11px", color: "#888" }}>({i.unit})</span></span>
+                  <span style={{ fontWeight: 700, color: "#888" }}>${Number(i.default_cost).toLocaleString("es-AR")}</span>
+                </div>
+              ))
+            ) : (
+              <div style={{ padding: "8px 12px", color: "#888", fontSize: "12px" }}>No se encontraron insumos</div>
+            )}
           </div>
         )}
 

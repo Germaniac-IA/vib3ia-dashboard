@@ -104,6 +104,10 @@ export default function PagosPage() {
     finally { setSaving(false); }
   }
 
+  function loadUnpaidNPs() {
+    fetchJson<UnpaidNP[]>("/purchase-orders/unpaid").then(setUnpaidNPs).catch(console.error);
+  }
+
   function openMovForm() {
     setSelectedNp(null);
     setSelectedSupplier(null);
@@ -112,15 +116,7 @@ export default function PagosPage() {
     setMovForm({ financial_account_id: "", reason: "", purchase_order_id: "", supplier_id: "", amount: "", notes: "" });
     setUnpaidNPs([]);
     setShowMovForm(true);
-    // Load unpaid NPs on first open
-    fetchJson<UnpaidNP[]>("/purchase-orders").then(orders => {
-      const unpaid = orders.filter((o: any) => {
-        const paid = parseFloat(o.payment_paid || "0");
-        const total = parseFloat(o.total || "0");
-        return paid < total;
-      });
-      setUnpaidNPs(unpaid);
-    }).catch(console.error);
+    loadUnpaidNPs();
   }
 
   async function handleDeleteMovement(id: number) {
@@ -200,7 +196,14 @@ export default function PagosPage() {
               </div>
               <div>
                 <label style={{ fontSize: "12px", fontWeight: 700, color: "#666" }}>Motivo</label>
-                <select value={movForm.reason} onChange={e => { setMov("reason", e.target.value); setSelectedNp(null); setSelectedSupplier(null); setMovForm(prev => ({ ...prev, purchase_order_id: "", supplier_id: "", amount: "" })); }} style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }}>
+                <select value={movForm.reason} onChange={e => {
+                  const value = e.target.value;
+                  setMov("reason", value);
+                  setSelectedNp(null);
+                  setSelectedSupplier(null);
+                  setMovForm(prev => ({ ...prev, purchase_order_id: "", supplier_id: "", amount: "" }));
+                  if (value === "np_payment") loadUnpaidNPs();
+                }} style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }}>
                   <option value="">Seleccionar motivo...</option>
                   <option value="np_payment">Pago de NP</option>
                   <option value="advance">Anticipo a proveedor</option>

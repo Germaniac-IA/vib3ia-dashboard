@@ -209,8 +209,10 @@ function NewNPModal({ onClose, onCreated }: { onClose: () => void; onCreated: ()
   function updateItemQty(idx: number, qty: number) { const v = [...items]; v[idx].quantity = qty; setItems(v); }
   function updateItemPrice(idx: number, price: number) { const v = [...items]; v[idx].unit_price = price; setItems(v); }
 
-  const fp = products.filter(p => !pSearch || p.name.toLowerCase().includes(pSearch.toLowerCase()));
-  const fi = inputItems.filter(i => !iiSearch || i.name.toLowerCase().includes(iiSearch.toLowerCase()));
+  const productQuery = pSearch.trim().toLowerCase();
+  const inputQuery = iiSearch.trim().toLowerCase();
+  const fp = productQuery ? products.filter(p => p.name.toLowerCase().includes(productQuery)) : [];
+  const fi = inputQuery ? inputItems.filter(i => i.name.toLowerCase().includes(inputQuery)) : [];
 
   const subtotal = items.reduce((s, i) => s + i.quantity * i.unit_price, 0);
   let disc = 0;
@@ -328,15 +330,21 @@ function NewNPModal({ onClose, onCreated }: { onClose: () => void; onCreated: ()
               onChange={e => { setPSearch(e.target.value); setShowProductsDropdown(true); }}
               onFocus={() => { setShowProductsDropdown(true); if (products.length === 0) fetchJson<Product[]>("/products").then(setProducts).catch(() => {}); }}
               onBlur={() => setTimeout(() => setShowProductsDropdown(false), 200)}
-              placeholder="Buscar producto..."
+              placeholder={`Buscar entre ${products.length} productos...`}
               style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }}
             />
-            {fp.slice(0, 10).map(p => (
-              <div key={p.id} onClick={() => { addItem(p, "product"); setPSearch(""); }} style={{ padding: "8px 12px", borderBottom: "1px solid #f0", cursor: "pointer", display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
-                <span>{p.name}</span>
-                <span style={{ fontWeight: 700, color: "#888" }}>${Number(p.price).toLocaleString("es-AR")}</span>
-              </div>
-            ))}
+            {!productQuery ? (
+              <div style={{ padding: "8px 12px", color: "#888", fontSize: "12px" }}>Empezá a escribir para buscar productos</div>
+            ) : fp.length > 0 ? (
+              fp.slice(0, 6).map(p => (
+                <div key={p.id} onClick={() => { addItem(p, "product"); setPSearch(""); }} style={{ padding: "8px 12px", borderBottom: "1px solid #f0", cursor: "pointer", display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
+                  <span>{p.name}</span>
+                  <span style={{ fontWeight: 700, color: "#888" }}>${Number(p.price).toLocaleString("es-AR")}</span>
+                </div>
+              ))
+            ) : (
+              <div style={{ padding: "8px 12px", color: "#888", fontSize: "12px" }}>No se encontraron productos</div>
+            )}
           </div>
         )}
 
@@ -365,15 +373,21 @@ function NewNPModal({ onClose, onCreated }: { onClose: () => void; onCreated: ()
               onChange={e => { setIiSearch(e.target.value); setShowInputItemsDropdown(true); }}
               onFocus={() => { setShowInputItemsDropdown(true); if (inputItems.length === 0) fetchJson<InputItem[]>("/input-items").then(setInputItems).catch(() => {}); }}
               onBlur={() => setTimeout(() => setShowInputItemsDropdown(false), 200)}
-              placeholder="Buscar insumo..."
+              placeholder={`Buscar entre ${inputItems.length} insumos...`}
               style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }}
             />
-            {fi.slice(0, 10).map(i => (
-              <div key={i.id} onClick={() => { addItem(i, "input_item"); setIiSearch(""); }} style={{ padding: "8px 12px", borderBottom: "1px solid #f0", cursor: "pointer", display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
-                <span>{i.name} <span style={{ fontSize: "11px", color: "#888" }}>({i.unit})</span></span>
-                <span style={{ fontWeight: 700, color: "#888" }}>${Number(i.default_cost).toLocaleString("es-AR")}</span>
-              </div>
-            ))}
+            {!inputQuery ? (
+              <div style={{ padding: "8px 12px", color: "#888", fontSize: "12px" }}>Empezá a escribir para buscar insumos</div>
+            ) : fi.length > 0 ? (
+              fi.slice(0, 6).map(i => (
+                <div key={i.id} onClick={() => { addItem(i, "input_item"); setIiSearch(""); }} style={{ padding: "8px 12px", borderBottom: "1px solid #f0", cursor: "pointer", display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
+                  <span>{i.name} <span style={{ fontSize: "11px", color: "#888" }}>({i.unit})</span></span>
+                  <span style={{ fontWeight: 700, color: "#888" }}>${Number(i.default_cost).toLocaleString("es-AR")}</span>
+                </div>
+              ))
+            ) : (
+              <div style={{ padding: "8px 12px", color: "#888", fontSize: "12px" }}>No se encontraron insumos</div>
+            )}
           </div>
         )}
 
