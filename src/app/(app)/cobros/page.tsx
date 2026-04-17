@@ -123,6 +123,7 @@ export default function CobrosPage() {
       } else if (movForm.reason === "nv_payment") {
         // Create cash movement for NV
         await postJson("/cash-movements", {
+          session_id: null,
           financial_account_id: Number(movForm.financial_account_id),
           type: "in",
           reason: "nv_payment",
@@ -161,6 +162,11 @@ export default function CobrosPage() {
     setMovForm({ financial_account_id: "", reason: "nv_payment", order_id: "", client_id: "", amount: "", notes: "" });
     setUnpaidNVs([]);
     setShowMovForm(true);
+    // Load unpaid NVs on first open
+    fetch("/api/orders/unpaid")
+      .then(r => r.json())
+      .then(setUnpaidNVs)
+      .catch(console.error);
   }
 
   async function handleDeleteMovement(id: number) {
