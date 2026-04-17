@@ -404,10 +404,6 @@ function OrderStatusesABM() {
               <input type="number" value={form.sort_order} min={0}
                 onChange={e => setForm(prev => ({ ...prev, sort_order: Number(e.target.value) }))}
                 placeholder="Orden" style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
-              <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", cursor: "pointer", padding: "4px 0" }}>
-                <input type="checkbox" checked={form.has_delivery} onChange={e => setForm(prev => ({ ...prev, has_delivery: e.target.checked }))} style={{ width: "16px", height: "16px" }} />
-                <span style={{ fontWeight: 600 }}>🚚 Genera entregas automáticas</span>
-              </label>
             </div>
             <div style={{ display: "flex", gap: "8px", marginTop: "16px" }}>
               <button onClick={() => setShowForm(false)} style={{ flex: 1, padding: "8px", borderRadius: "8px", border: "1px solid #ddd", background: "#fff", cursor: "pointer" }}>Cancelar</button>
@@ -477,10 +473,6 @@ function PaymentStatusesABM() {
               <input type="number" value={form.sort_order} min={0}
                 onChange={e => setForm(prev => ({ ...prev, sort_order: Number(e.target.value) }))}
                 placeholder="Orden" style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
-              <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", cursor: "pointer", padding: "4px 0" }}>
-                <input type="checkbox" checked={form.has_delivery} onChange={e => setForm(prev => ({ ...prev, has_delivery: e.target.checked }))} style={{ width: "16px", height: "16px" }} />
-                <span style={{ fontWeight: 600 }}>🚚 Genera entregas automáticas</span>
-              </label>
             </div>
             <div style={{ display: "flex", gap: "8px", marginTop: "16px" }}>
               <button onClick={() => setShowForm(false)} style={{ flex: 1, padding: "8px", borderRadius: "8px", border: "1px solid #ddd", background: "#fff", cursor: "pointer" }}>Cancelar</button>
