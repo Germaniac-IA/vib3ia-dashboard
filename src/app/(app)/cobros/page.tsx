@@ -6,6 +6,8 @@ import { Card, PageTitle, Loading, Empty } from "../../components/shared/UI";
 
 type CashMovement = { id: number; type: string; reason: string; amount: number; account_name: string; client_name: string; order_number: string; notes: string; created_at: string; };
 type PaymentMethod = { id: number; name: string; requires_arqueo: boolean };
+type Contact = { id: number; name: string; phone: string; };
+type UnpaidNV = { id: number; order_number: string; contact_name: string; phone: string; total: number; payment_paid: number; payment_pending: number; };
 type Stats = { total_in: number; total_out: number; move_count: number; nv_count: number; net: number; };
 type Period = "today" | "week" | "month";
 
@@ -14,10 +16,23 @@ export default function CobrosPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [period, setPeriod] = useState<Period>("today");
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [showMovForm, setShowMovForm] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [movForm, setMovForm] = useState({ financial_account_id: "", reason: "nv_payment", order_id: "", client_id: "", amount: "", notes: "" });
+  const [saving, setSaving] = useState(false);
+
+  // NV selector state
+  const [unpaidNVs, setUnpaidNVs] = useState<UnpaidNV[]>([]);
+  const [nvSearch, setNvSearch] = useState("");
+  const [showNvDropdown, setShowNvDropdown] = useState(false);
+  const [selectedNv, setSelectedNv] = useState<UnpaidNV | null>(null);
+
+  // Contact selector state (for Anticipo)
+  const [contactSearch, setContactSearch] = useState("");
+  const [showContactDropdown, setShowContactDropdown] = useState(false);
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
 
   function load() {
     setLoading(true);
@@ -25,10 +40,12 @@ export default function CobrosPage() {
       fetchJson<CashMovement[]>("/cash-movements?type=in&period=" + period),
       fetchJson<Stats>("/cash/stats?period=" + period),
       fetchJson<PaymentMethod[]>("/payment-methods"),
-    ]).then(([mov, st, pm]) => {
+      fetchJson<Contact[]>("/contacts"),
+    ]).then(([mov, st, pm, cc]) => {
       setMovements(mov);
       setStats(st);
       setPaymentMethods(pm);
+      setContacts(cc);
     }).catch(console.error).finally(() => setLoading(false));
   }
 
@@ -36,24 +53,114 @@ export default function CobrosPage() {
 
   function setMov(field: string, value: string) {
     setMovForm(prev => ({ ...prev, [field]: value }));
+    if (field === "client_id") {
+      // Reload unpaid NVs filtered by client
+      if (value) {
+        fetchJson<UnpaidNV[]>("/orders/unpaid?contact_id=" + value).then(setUnpaidNVs).catch(console.error);
+      } else {
+        setUnpaidNVs([]);
+      }
+      setSelectedNv(null);
+    }
   }
 
+  // Load all unpaid NVs when NV payment reason is selected and no client filter
+  useEffect(() => {
+    if (movForm.reason === "nv_payment" && !movForm.client_id) {
+      fetchJson<UnpaidNV[]>("/orders/unpaid").then(setUnpaidNVs).catch(console.error);
+    }
+  }, [movForm.reason]);
+
+  // When NV is selected, auto-fill amount
+  function selectNv(nv: UnpaidNV) {
+    setSelectedNv(nv);
+    setMovForm(prev => ({ ...prev, order_id: String(nv.id), amount: String(nv.payment_pending) }));
+    setNvSearch("");
+    setShowNvDropdown(false);
+  }
+
+  // When contact is selected for advance
+  function selectContact(contact: Contact) {
+    setSelectedContact(contact);
+    setMovForm(prev => ({ ...prev, client_id: String(contact.id) }));
+    setContactSearch("");
+    setShowContactDropdown(false);
+    // Also reload NVs filtered by this contact
+    fetchJson<UnpaidNV[]>("/orders/unpaid?contact_id=" + contact.id).then(setUnpaidNVs).catch(console.error);
+  }
+
+  const filteredNVs = unpaidNVs.filter(nv =>
+    !nvSearch || nv.order_number?.toLowerCase().includes(nvSearch.toLowerCase()) ||
+    nv.contact_name?.toLowerCase().includes(nvSearch.toLowerCase())
+  );
+
+  const filteredContacts = contacts.filter(c =>
+    !contactSearch || c.name?.toLowerCase().includes(contactSearch.toLowerCase()) ||
+    c.phone?.includes(contactSearch)
+  );
+
   async function handleRegisterMovement() {
-    if (!movForm.amount || !movForm.financial_account_id) { alert("Completá cuenta y monto"); return; }
+    if (!movForm.financial_account_id || !movForm.amount) { alert("Completá cuenta y monto"); return; }
+    setSaving(true);
     try {
-      await postJson("/cash-movements", {
-        financial_account_id: Number(movForm.financial_account_id),
-        type: "in",
-        reason: movForm.reason || "other_in",
-        order_id: movForm.order_id ? Number(movForm.order_id) : undefined,
-        client_id: movForm.client_id ? Number(movForm.client_id) : undefined,
-        amount: Number(movForm.amount),
-        notes: movForm.notes || undefined,
-      });
+      if (movForm.reason === "advance") {
+        // 1. Create client advance
+        if (!movForm.client_id) { alert("Seleccioná un cliente"); setSaving(false); return; }
+        const advance = await postJson<{ id: number }>("/client-advances", {
+          client_id: Number(movForm.client_id),
+          amount: Number(movForm.amount),
+          notes: movForm.notes || `Anticipo - NV: ${selectedNv?.order_number || 'N/A'}`,
+        });
+        // 2. Create cash movement linked to the advance
+        await postJson("/cash-movements", {
+          financial_account_id: Number(movForm.financial_account_id),
+          type: "in",
+          reason: "advance",
+          client_id: Number(movForm.client_id),
+          amount: Number(movForm.amount),
+          notes: `Anticipo #${advance.id}` + (movForm.notes ? " - " + movForm.notes : ""),
+        });
+      } else if (movForm.reason === "nv_payment") {
+        // Create cash movement for NV
+        await postJson("/cash-movements", {
+          financial_account_id: Number(movForm.financial_account_id),
+          type: "in",
+          reason: "nv_payment",
+          order_id: movForm.order_id ? Number(movForm.order_id) : undefined,
+          client_id: movForm.client_id ? Number(movForm.client_id) : undefined,
+          amount: Number(movForm.amount),
+          notes: movForm.notes || undefined,
+        });
+      } else {
+        // Other income
+        await postJson("/cash-movements", {
+          financial_account_id: Number(movForm.financial_account_id),
+          type: "in",
+          reason: "other_in",
+          client_id: movForm.client_id ? Number(movForm.client_id) : undefined,
+          amount: Number(movForm.amount),
+          notes: movForm.notes || undefined,
+        });
+      }
       setShowMovForm(false);
       setMovForm({ financial_account_id: "", reason: "nv_payment", order_id: "", client_id: "", amount: "", notes: "" });
+      setSelectedNv(null);
+      setSelectedContact(null);
+      setNvSearch("");
+      setContactSearch("");
       setRefreshKey(k => k + 1);
-    } catch (e: any) { alert(e?.response?.data?.error || "Error"); }
+    } catch (e: any) { alert(e?.message || e?.response?.data?.error || "Error"); }
+    finally { setSaving(false); }
+  }
+
+  function openMovForm() {
+    setSelectedNv(null);
+    setSelectedContact(null);
+    setNvSearch("");
+    setContactSearch("");
+    setMovForm({ financial_account_id: "", reason: "nv_payment", order_id: "", client_id: "", amount: "", notes: "" });
+    setUnpaidNVs([]);
+    setShowMovForm(true);
   }
 
   async function handleDeleteMovement(id: number) {
@@ -94,7 +201,7 @@ export default function CobrosPage() {
       </div>
 
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "12px" }}>
-        <button onClick={() => setShowMovForm(true)} style={{ padding: "8px 16px", borderRadius: "8px", border: "none", background: "#27ae60", color: "#fff", cursor: "pointer", fontSize: "13px", fontWeight: 700 }}>💰 Registrar Cobro</button>
+        <button onClick={openMovForm} style={{ padding: "8px 16px", borderRadius: "8px", border: "none", background: "#27ae60", color: "#fff", cursor: "pointer", fontSize: "13px", fontWeight: 700 }}>💰 Registrar Cobro</button>
       </div>
 
       {loading ? <Loading /> : movements.length === 0 ? <Empty message="Sin cobros registrados" /> : (
@@ -122,7 +229,7 @@ export default function CobrosPage() {
 
       {showMovForm && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }} onClick={e => e.target === e.currentTarget && setShowMovForm(false)}>
-          <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "420px" }}>
+          <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "460px" }}>
             <h2 style={{ margin: "0 0 16px", fontSize: "18px", fontWeight: 800 }}>💰 Registrar Cobro</h2>
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               <div>
@@ -134,15 +241,111 @@ export default function CobrosPage() {
               </div>
               <div>
                 <label style={{ fontSize: "12px", fontWeight: 700, color: "#666" }}>Motivo</label>
-                <select value={movForm.reason} onChange={e => setMov("reason", e.target.value)} style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }}>
+                <select value={movForm.reason} onChange={e => { setMov("reason", e.target.value); setSelectedNv(null); setSelectedContact(null); setMovForm(prev => ({ ...prev, order_id: "", client_id: "", amount: "" })); }} style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }}>
                   <option value="nv_payment">Cobro de NV</option>
                   <option value="advance">Anticipo de cliente</option>
                   <option value="other_in">Otro ingreso</option>
                 </select>
               </div>
+
+              {/* Cobro de NV - NV Selector */}
               {movForm.reason === "nv_payment" && (
-                <input type="number" value={movForm.order_id} onChange={e => setMov("order_id", e.target.value)} placeholder="ID de NV cobrada" style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
+                <>
+                  <div>
+                    <label style={{ fontSize: "12px", fontWeight: 700, color: "#666" }}>NV / Orden</label>
+                    {selectedNv ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 12px", background: "#f0fff4", borderRadius: "8px", border: "1px solid #27ae60" }}>
+                        <span style={{ flex: 1, fontSize: "14px", fontWeight: 700 }}>
+                          {selectedNv.order_number} · {selectedNv.contact_name} · <span style={{ color: "#f39c12" }}>${selectedNv.payment_pending.toLocaleString("es-AR")} pend.</span>
+                        </span>
+                        <button onClick={() => { setSelectedNv(null); setMovForm(prev => ({ ...prev, order_id: "", amount: "" })); }} style={{ background: "none", border: "none", color: "#e74c3c", cursor: "pointer", fontSize: "13px" }}>✕</button>
+                      </div>
+                    ) : (
+                      <div style={{ position: "relative" }}>
+                        <div style={{ display: "flex", gap: "6px" }}>
+                          <input value={nvSearch} onChange={e => { setNvSearch(e.target.value); setShowNvDropdown(true); }} onFocus={() => setShowNvDropdown(true)} placeholder="Buscar NV por número o cliente..." style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
+                        </div>
+                        {showNvDropdown && (
+                          <div style={{ position: "absolute", top: "100%", left: 0, right: 0, border: "1px solid #ddd", borderRadius: "8px", marginTop: "4px", maxHeight: "220px", overflowY: "auto", background: "#fff", zIndex: 10, boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+                            {filteredNVs.length === 0 ? (
+                              <div style={{ padding: "12px", fontSize: "12px", color: "#999", textAlign: "center" }}>Sin NV pendientes</div>
+                            ) : filteredNVs.slice(0, 15).map(nv => (
+                              <div key={nv.id} onClick={() => selectNv(nv)}
+                                style={{ padding: "10px 14px", cursor: "pointer", fontSize: "13px", borderBottom: "1px solid #f0", display: "flex", justifyContent: "space-between" }}
+                                onMouseEnter={e => (e.currentTarget.style.background = "#f5f5f5")}
+                                onMouseLeave={e => (e.currentTarget.style.background = "none")}>
+                                <span><b>{nv.order_number}</b> · {nv.contact_name}</span>
+                                <span style={{ color: "#f39c12", fontWeight: 700 }}>${nv.payment_pending.toLocaleString("es-AR")} pend.</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {/* Optional: filter by client */}
+                  <div>
+                    <label style={{ fontSize: "12px", fontWeight: 700, color: "#666" }}>Filtrar por cliente (opcional)</label>
+                    <select value={movForm.client_id} onChange={e => setMov("client_id", e.target.value)} style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }}>
+                      <option value="">Todos los clientes</option>
+                      {contacts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                </>
               )}
+
+              {/* Anticipo de Cliente */}
+              {movForm.reason === "advance" && (
+                <>
+                  <div>
+                    <label style={{ fontSize: "12px", fontWeight: 700, color: "#666" }}>Cliente *</label>
+                    {selectedContact ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 12px", background: "#f0fff4", borderRadius: "8px", border: "1px solid #27ae60" }}>
+                        <span style={{ flex: 1, fontSize: "14px", fontWeight: 700 }}>{selectedContact.name}</span>
+                        {selectedContact.phone && <span style={{ fontSize: "12px", color: "#666" }}>{selectedContact.phone}</span>}
+                        <button onClick={() => { setSelectedContact(null); setMovForm(prev => ({ ...prev, client_id: "" })); }} style={{ background: "none", border: "none", color: "#e74c3c", cursor: "pointer", fontSize: "13px" }}>✕</button>
+                      </div>
+                    ) : (
+                      <div style={{ position: "relative" }}>
+                        <div style={{ display: "flex", gap: "6px" }}>
+                          <input value={contactSearch} onChange={e => { setContactSearch(e.target.value); setShowContactDropdown(true); }} onFocus={() => setShowContactDropdown(true)} placeholder="Buscar cliente..." style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
+                          <button onClick={() => setShowContactDropdown(!showContactDropdown)} style={{ padding: "8px 10px", borderRadius: "8px", border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontSize: "14px" }}>🔍</button>
+                        </div>
+                        {showContactDropdown && (
+                          <div style={{ position: "absolute", top: "100%", left: 0, right: 0, border: "1px solid #ddd", borderRadius: "8px", marginTop: "4px", maxHeight: "200px", overflowY: "auto", background: "#fff", zIndex: 10, boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+                            {filteredContacts.length === 0 ? (
+                              <div style={{ padding: "12px", fontSize: "12px", color: "#999", textAlign: "center" }}>Sin resultados</div>
+                            ) : filteredContacts.slice(0, 15).map(c => (
+                              <div key={c.id} onClick={() => selectContact(c)}
+                                style={{ padding: "10px 14px", cursor: "pointer", fontSize: "13px", borderBottom: "1px solid #f0", display: "flex", justifyContent: "space-between" }}
+                                onMouseEnter={e => (e.currentTarget.style.background = "#f5f5f5")}
+                                onMouseLeave={e => (e.currentTarget.style.background = "none")}>
+                                <span><b>{c.name}</b></span>
+                                <span style={{ color: "#888" }}>{c.phone}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {/* Show client's unpaid NVs for reference */}
+                  {movForm.client_id && unpaidNVs.length > 0 && (
+                    <div>
+                      <label style={{ fontSize: "12px", fontWeight: 700, color: "#666" }}>NV del cliente (referencia)</label>
+                      <div style={{ border: "1px solid #eee", borderRadius: "8px", maxHeight: "120px", overflowY: "auto" }}>
+                        {unpaidNVs.map(nv => (
+                          <div key={nv.id} style={{ padding: "8px 12px", borderBottom: "1px solid #f0", fontSize: "12px", display: "flex", justifyContent: "space-between" }}>
+                            <span><b>{nv.order_number}</b></span>
+                            <span style={{ color: "#f39c12" }}>${nv.payment_pending.toLocaleString("es-AR")} pend.</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
               <div>
                 <label style={{ fontSize: "12px", fontWeight: 700, color: "#666" }}>Monto *</label>
                 <input type="number" value={movForm.amount} onChange={e => setMov("amount", e.target.value)} placeholder="0.00" style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
@@ -154,7 +357,7 @@ export default function CobrosPage() {
             </div>
             <div style={{ display: "flex", gap: "8px", marginTop: "16px" }}>
               <button onClick={() => setShowMovForm(false)} style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "1px solid #ddd", background: "#fff", cursor: "pointer" }}>Cancelar</button>
-              <button onClick={handleRegisterMovement} style={{ flex: 2, padding: "10px", borderRadius: "8px", border: "none", background: "#27ae60", color: "#fff", cursor: "pointer", fontWeight: 700 }}>💰 Registrar</button>
+              <button onClick={handleRegisterMovement} disabled={saving} style={{ flex: 2, padding: "10px", borderRadius: "8px", border: "none", background: "#27ae60", color: "#fff", cursor: saving ? "not-allowed" : "pointer", fontWeight: 700, opacity: saving ? 0.7 : 1, fontSize: "14px" }}>{saving ? "Registrando..." : "💰 Registrar"}</button>
             </div>
           </div>
         </div>
