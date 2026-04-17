@@ -20,7 +20,7 @@ export default function CobrosPage() {
   const [loading, setLoading] = useState(true);
   const [showMovForm, setShowMovForm] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [movForm, setMovForm] = useState({ financial_account_id: "", reason: "nv_payment", order_id: "", client_id: "", amount: "", notes: "" });
+  const [movForm, setMovForm] = useState({ financial_account_id: "", reason: "", order_id: "", client_id: "", amount: "", notes: "" });
   const [saving, setSaving] = useState(false);
 
   // NV selector state
@@ -126,7 +126,7 @@ export default function CobrosPage() {
           session_id: null,
           financial_account_id: Number(movForm.financial_account_id),
           type: "in",
-          reason: "nv_payment",
+          reason: "",
           order_id: movForm.order_id ? Number(movForm.order_id) : undefined,
           client_id: movForm.client_id ? Number(movForm.client_id) : undefined,
           amount: Number(movForm.amount),
@@ -135,6 +135,7 @@ export default function CobrosPage() {
       } else {
         // Other income
         await postJson("/cash-movements", {
+          session_id: null,
           financial_account_id: Number(movForm.financial_account_id),
           type: "in",
           reason: "other_in",
@@ -144,7 +145,7 @@ export default function CobrosPage() {
         });
       }
       setShowMovForm(false);
-      setMovForm({ financial_account_id: "", reason: "nv_payment", order_id: "", client_id: "", amount: "", notes: "" });
+      setMovForm({ financial_account_id: "", reason: "", order_id: "", client_id: "", amount: "", notes: "" });
       setSelectedNv(null);
       setSelectedContact(null);
       setNvSearch("");
@@ -159,7 +160,7 @@ export default function CobrosPage() {
     setSelectedContact(null);
     setNvSearch("");
     setContactSearch("");
-    setMovForm({ financial_account_id: "", reason: "nv_payment", order_id: "", client_id: "", amount: "", notes: "" });
+    setMovForm({ financial_account_id: "", reason: "", order_id: "", client_id: "", amount: "", notes: "" });
     setUnpaidNVs([]);
     setShowMovForm(true);
     // Load unpaid NVs on first open
