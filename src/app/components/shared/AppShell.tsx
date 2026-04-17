@@ -1,13 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "./Sidebar";
 import { useCashSession } from "./CashStatusBar";
+import { useTheme } from "./ThemeContext";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const router = useRouter();
+  const { theme, toggleTheme } = useTheme();
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+  }, [theme]);
   const {
     session, openSessions, showOpen, setShowOpen, showClose, setShowClose,
     closeForm, setCloseForm, closing, opening, handleOpen, handleJoin,
@@ -21,7 +27,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh" }}>
+    <div data-theme={theme} className="page-content" style={{ display: "flex", minHeight: "100vh" }}>
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       {/* Open session modal */}
@@ -104,6 +110,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           ) : (
             <button onClick={() => setShowClose(true)} style={{ background: "#e74c3c", border: "none", borderRadius: "8px", padding: "6px 12px", color: "#fff", cursor: "pointer", fontSize: "13px", fontWeight: 700 }}>🔒 Cerrar</button>
           )}
+          <button onClick={toggleTheme} title="Cambiar tema" style={{ background: "none", border: "1px solid #eee", borderRadius: "8px", padding: "6px 10px", cursor: "pointer", fontSize: "14px" }}>{theme === "dark" ? "☀️" : "🌙"}</button>
           <button onClick={handleLogout} title="Salir" style={{ background: "none", border: "1px solid #eee", borderRadius: "8px", padding: "6px 10px", cursor: "pointer", fontSize: "14px" }}>🔓</button>
         </header>
 

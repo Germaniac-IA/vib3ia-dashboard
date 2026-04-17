@@ -6,6 +6,10 @@ import { postJson } from "./lib";
 
 export default function HomePage() {
   const router = useRouter();
+  useEffect(() => {
+    const saved = localStorage.getItem("theme");
+    if (saved) document.documentElement.setAttribute("data-theme", saved);
+  }, []);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -38,16 +42,13 @@ export default function HomePage() {
   }
 
   return (
-    <div
-      style={{
+    <div className="login-wrapper" style={{
         minHeight: "100vh",
         display: "flex",
         alignItems: "center",
-        justifyContent: "center",
-        background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)",
-      }}
-    >
-      <div
+        justifyContent: "center"
+      }}>
+      <div className="login-box"
         style={{
           background: "#fff",
           borderRadius: "16px",

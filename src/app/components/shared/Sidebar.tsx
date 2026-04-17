@@ -69,7 +69,7 @@ export default function Sidebar({
       )}
 
       {/* Sidebar */}
-      <aside
+      <aside className="sidebar"
         style={{
           position: "fixed",
           top: 0,
