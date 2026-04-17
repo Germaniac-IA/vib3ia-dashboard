@@ -90,7 +90,7 @@ export function useCashSession() {
     if (!session) return;
     setClosing(true);
     try {
-      await fetch(`http://149.50.148.131:4000/api/cash-sessions/${session.id}/close`, {
+      const r = await fetch(`http://149.50.148.131:4000/api/cash-sessions/${session.id}/close`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -101,6 +101,12 @@ export function useCashSession() {
           notes: closeForm.notes || '',
         }),
       });
+      if (!r.ok) {
+        const err = await r.json();
+        alert(err.error || 'Error al cerrar caja');
+        setClosing(false);
+        return;
+      }
       setShowClose(false);
       setCloseForm({ total_cash: "", total_digital: "", total_other: "", notes: "" });
       load();
