@@ -13,6 +13,27 @@ type Provider = { id: number; name: string; business_name: string; tax_id: strin
 type Stat = { total_count: number; total_amount: number; };
 type Period = "today" | "week" | "month";
 
+function FieldInput({ label, value, onChange, placeholder, type = "text" }: any) {
+  return (
+    <div>
+      <label style={{ fontSize: "12px", fontWeight: 700, color: "#666", display: "block", marginBottom: "2px" }}>{label}</label>
+      <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} type={type} style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
+    </div>
+  );
+}
+
+function FieldSelect({ label, value, onChange, options }: any) {
+  return (
+    <div>
+      <label style={{ fontSize: "12px", fontWeight: 700, color: "#666", display: "block", marginBottom: "2px" }}>{label}</label>
+      <select value={value} onChange={e => onChange(e.target.value)} style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }}>
+        <option value="">Seleccionar...</option>
+        {options.map((o: any) => <option key={o.id} value={o.id}>{o.name}</option>)}
+      </select>
+    </div>
+  );
+}
+
 export default function ComprasPage() {
   const [orders, setOrders] = useState<PO[]>([]);
   const [loading, setLoading] = useState(true);
@@ -245,23 +266,6 @@ function NewNPModal({ onClose, onCreated }: { onClose: () => void; onCreated: ()
     finally { setSaving(false); }
   }
 
-  const Input = ({ label, value, onChange, placeholder, type = "text" }: any) => (
-    <div>
-      <label style={{ fontSize: "12px", fontWeight: 700, color: "#666", display: "block", marginBottom: "2px" }}>{label}</label>
-      <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} type={type} style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
-    </div>
-  );
-
-  const Sel = ({ label, value, onChange, options }: any) => (
-    <div>
-      <label style={{ fontSize: "12px", fontWeight: 700, color: "#666", display: "block", marginBottom: "2px" }}>{label}</label>
-      <select value={value} onChange={e => onChange(e.target.value)} style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }}>
-        <option value="">Seleccionar...</option>
-        {options.map((o: any) => <option key={o.id} value={o.id}>{o.name}</option>)}
-      </select>
-    </div>
-  );
-
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }} onClick={e => e.target === e.currentTarget && onClose()}>
       <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "600px", maxHeight: "90vh", overflowY: "auto" }}>
@@ -286,12 +290,12 @@ function NewNPModal({ onClose, onCreated }: { onClose: () => void; onCreated: ()
           <div style={{ marginBottom: "12px", padding: "12px", background: "#f8fff8", borderRadius: "8px", border: "1px solid #27ae60" }}>
             <div style={{ fontWeight: 700, fontSize: "13px", marginBottom: "8px" }}>➕ Nuevo Proveedor</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-              <Input label="Nombre *" value={newProvider.name} onChange={v => setNewProvider(p => ({ ...p, name: v }))} placeholder="ej: Florería San Juan" />
-              <Input label="Razón Social" value={newProvider.business_name} onChange={v => setNewProvider(p => ({ ...p, business_name: v }))} placeholder="ej: Florería SJ SRL" />
-              <Input label="CUIT" value={newProvider.tax_id} onChange={v => setNewProvider(p => ({ ...p, tax_id: v }))} placeholder="XX-XXXXXXXX-X" />
-              <Input label="Teléfono" value={newProvider.phone} onChange={v => setNewProvider(p => ({ ...p, phone: v }))} placeholder="264XXXXXXX" />
-              <Input label="WhatsApp" value={newProvider.whatsapp} onChange={v => setNewProvider(p => ({ ...p, whatsapp: v }))} placeholder="549264..." />
-              <Input label="Email" value={newProvider.email} onChange={v => setNewProvider(p => ({ ...p, email: v }))} placeholder="info@floreria.com" />
+              <FieldInput label="Nombre *" value={newProvider.name} onChange={v => setNewProvider(p => ({ ...p, name: v }))} placeholder="ej: Florería San Juan" />
+              <FieldInput label="Razón Social" value={newProvider.business_name} onChange={v => setNewProvider(p => ({ ...p, business_name: v }))} placeholder="ej: Florería SJ SRL" />
+              <FieldInput label="CUIT" value={newProvider.tax_id} onChange={v => setNewProvider(p => ({ ...p, tax_id: v }))} placeholder="XX-XXXXXXXX-X" />
+              <FieldInput label="Teléfono" value={newProvider.phone} onChange={v => setNewProvider(p => ({ ...p, phone: v }))} placeholder="264XXXXXXX" />
+              <FieldInput label="WhatsApp" value={newProvider.whatsapp} onChange={v => setNewProvider(p => ({ ...p, whatsapp: v }))} placeholder="549264..." />
+              <FieldInput label="Email" value={newProvider.email} onChange={v => setNewProvider(p => ({ ...p, email: v }))} placeholder="info@floreria.com" />
             </div>
             <div style={{ display: "flex", gap: "6px", marginTop: "8px" }}>
               <button onClick={() => setShowNewProvider(false)} style={{ flex: 1, padding: "6px", borderRadius: "6px", border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontSize: "12px" }}>Cancelar</button>
@@ -326,8 +330,8 @@ function NewNPModal({ onClose, onCreated }: { onClose: () => void; onCreated: ()
           <div style={{ marginBottom: "12px", padding: "12px", background: "#f8fff8", borderRadius: "8px", border: "1px solid #27ae60" }}>
             <div style={{ fontWeight: 700, fontSize: "13px", marginBottom: "8px" }}>➕ Nuevo Producto</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-              <Input label="Nombre *" value={newProduct.name} onChange={v => setNewProduct({ name: v, price: newProduct.price })} placeholder="ej: Ramo de rosas" />
-              <Input label="Precio *" value={newProduct.price} onChange={v => setNewProduct({ name: newProduct.name, price: v })} placeholder="0.00" type="number" />
+              <FieldInput label="Nombre *" value={newProduct.name} onChange={v => setNewProduct({ name: v, price: newProduct.price })} placeholder="ej: Ramo de rosas" />
+              <FieldInput label="Precio *" value={newProduct.price} onChange={v => setNewProduct({ name: newProduct.name, price: v })} placeholder="0.00" type="number" />
             </div>
             <div style={{ display: "flex", gap: "6px", marginTop: "8px" }}>
               <button onClick={() => setShowNewProduct(false)} style={{ flex: 1, padding: "6px", borderRadius: "6px", border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontSize: "12px" }}>Cancelar</button>
@@ -356,9 +360,9 @@ function NewNPModal({ onClose, onCreated }: { onClose: () => void; onCreated: ()
           <div style={{ marginBottom: "12px", padding: "12px", background: "#f8fff8", borderRadius: "8px", border: "1px solid #27ae60" }}>
             <div style={{ fontWeight: 700, fontSize: "13px", marginBottom: "8px" }}>➕ Nuevo Insumo</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
-              <Input label="Nombre *" value={newInsumo.name} onChange={v => setNewInsumo({ ...newInsumo, name: v })} placeholder="ej: Tela de rosas" />
-              <Input label="Unidad" value={newInsumo.unit} onChange={v => setNewInsumo({ ...newInsumo, unit: v })} placeholder="ej: Metro" />
-              <Input label="Costo default" value={newInsumo.default_cost} onChange={v => setNewInsumo({ ...newInsumo, default_cost: v })} placeholder="0.00" type="number" />
+              <FieldInput label="Nombre *" value={newInsumo.name} onChange={v => setNewInsumo({ ...newInsumo, name: v })} placeholder="ej: Tela de rosas" />
+              <FieldInput label="Unidad" value={newInsumo.unit} onChange={v => setNewInsumo({ ...newInsumo, unit: v })} placeholder="ej: Metro" />
+              <FieldInput label="Costo default" value={newInsumo.default_cost} onChange={v => setNewInsumo({ ...newInsumo, default_cost: v })} placeholder="0.00" type="number" />
             </div>
             <div style={{ display: "flex", gap: "6px", marginTop: "8px" }}>
               <button onClick={() => setShowNewInsumo(false)} style={{ flex: 1, padding: "6px", borderRadius: "6px", border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontSize: "12px" }}>Cancelar</button>
@@ -387,9 +391,9 @@ function NewNPModal({ onClose, onCreated }: { onClose: () => void; onCreated: ()
 
         {/* Descuentos y envío */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px", marginBottom: "12px" }}>
-          <Sel label="Tipo Descuento" value={form.discount_type} onChange={v => setF("discount_type", v)} options={[{ id: "", name: "Sin descuento" }, { id: "percent", name: "%" }, { id: "fixed", name: "$" }]} />
-          {form.discount_type && <Input label="Monto" value={form.discount_value} onChange={v => setF("discount_value", v)} placeholder="0" type="number" />}
-          <Input label="Costo envío" value={form.delivery_fee} onChange={v => setF("delivery_fee", v)} placeholder="0.00" type="number" />
+          <FieldSelect label="Tipo Descuento" value={form.discount_type} onChange={v => setF("discount_type", v)} options={[{ id: "", name: "Sin descuento" }, { id: "percent", name: "%" }, { id: "fixed", name: "$" }]} />
+          {form.discount_type && <FieldInput label="Monto" value={form.discount_value} onChange={v => setF("discount_value", v)} placeholder="0" type="number" />}
+          <FieldInput label="Costo envío" value={form.delivery_fee} onChange={v => setF("delivery_fee", v)} placeholder="0.00" type="number" />
         </div>
 
         {/* Notas */}
@@ -406,8 +410,8 @@ function NewNPModal({ onClose, onCreated }: { onClose: () => void; onCreated: ()
           </label>
           {isPaid && (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginTop: "10px" }}>
-              <Sel label="Método de pago" value={paymentMethodId} onChange={setPaymentMethodId} options={paymentMethods} />
-              <Input label="Monto pagado" value={paymentAmount} onChange={setPaymentAmount} placeholder="0.00" type="number" />
+              <FieldSelect label="Método de pago" value={paymentMethodId} onChange={setPaymentMethodId} options={paymentMethods} />
+              <FieldInput label="Monto pagado" value={paymentAmount} onChange={setPaymentAmount} placeholder="0.00" type="number" />
             </div>
           )}
         </div>

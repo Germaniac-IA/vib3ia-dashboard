@@ -92,15 +92,6 @@ export default function NewSaleModal({ saleChannels, orderStatuses, paymentStatu
     }
   }, [selectedContact?.id]);
 
-  // Update montoPagado when total changes and pagaEnElActo
-  useEffect(() => {
-    if (pagaEnElActo && total > 0 && !advanceSeleccionado) {
-      setMontoPagado(String(total));
-    }
-  }, [total]);
-
-
-
   const isLocalChannel = saleChannels.find(c => String(c.id) === form.sale_channel_id)?.name?.toLowerCase().includes("local");
 
   const filteredContacts = selectedContact
@@ -124,6 +115,13 @@ export default function NewSaleModal({ saleChannels, orderStatuses, paymentStatu
   }
   const deliveryFee = isLocalChannel ? 0 : (Number(form.delivery_fee) || 0);
   const total = Math.max(0, subtotal - discountAmount + deliveryFee);
+
+  // Update montoPagado when total changes and pagaEnElActo
+  useEffect(() => {
+    if (pagaEnElActo && total > 0 && !advanceSeleccionado) {
+      setMontoPagado(String(total));
+    }
+  }, [total, pagaEnElActo, advanceSeleccionado]);
 
   function addProduct(p: Product) {
     if (items.find(i => i.product_id === p.id)) return;

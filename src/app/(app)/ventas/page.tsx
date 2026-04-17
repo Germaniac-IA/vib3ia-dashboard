@@ -396,8 +396,6 @@ export default function VentasPage() {
           />
         </div>
       )}
-    </div>
-  );
 
       {/* Status edit modal */}
       {showStatusModal && (
@@ -417,5 +415,6 @@ export default function VentasPage() {
           </div>
         </div>
       )}
-
+    </div>
+  );
 }
