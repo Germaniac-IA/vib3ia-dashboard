@@ -220,11 +220,14 @@ export default function NewSaleModal({ saleChannels, orderStatuses, paymentStatu
             <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 12px", background: "#f0fff4", borderRadius: "8px", border: "1px solid #27ae60" }}>
               <span style={{ flex: 1, fontSize: "14px", fontWeight: 700 }}>{selectedContact.name}</span>
               {selectedContact.phone && <span style={{ fontSize: "12px", color: "#666" }}>{selectedContact.phone}</span>}
-              {clienteAdvances.length > 0 && (
-                <span style={{ fontSize: "11px", background: "#6c63ff", color: "#fff", padding: "2px 8px", borderRadius: "4px", fontWeight: 700 }}>
-                  💳 {clienteAdvances.reduce((s, a) => s + a.remaining, 0).toLocaleString("es-AR")} anticipo
-                </span>
-              )}
+              {(() => {
+                const totalRemaining = clienteAdvances.reduce((s, a) => s + a.remaining, 0) - (advanceSeleccionado ? Number(advanceMontoUsar) : 0);
+                return totalRemaining > 0 ? (
+                  <span style={{ fontSize: "11px", background: "#6c63ff", color: "#fff", padding: "2px 8px", borderRadius: "4px", fontWeight: 700 }}>
+                    💳 {totalRemaining.toLocaleString("es-AR")} anticipo
+                  </span>
+                ) : null;
+              })()}
               <button onClick={() => { setSelectedContact(null); setContactSearch(""); }}
                 style={{ background: "none", border: "none", color: "#e74c3c", cursor: "pointer", fontSize: "13px" }}>✕</button>
             </div>
@@ -492,7 +495,11 @@ export default function NewSaleModal({ saleChannels, orderStatuses, paymentStatu
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "12px", maxHeight: "280px", overflowY: "auto" }}>
-                  {clienteAdvances.map(adv => (
+                  {clienteAdvances.map(adv => {
+                    const isSelected = advanceSeleccionado?.id === adv.id;
+                    const effRemaining = isSelected ? adv.remaining - Number(advanceMontoUsar) : adv.remaining;
+                    if (effRemaining <= 0) return null;
+                    return (
                     <div key={adv.id} onClick={() => { setAdvanceSeleccionado({ id: adv.id, remaining: adv.remaining }); setAdvanceMontoUsar(String(Math.min(Number(montoPagado), adv.remaining))); setAdvanceModalOpen(false); }}
                       style={{ padding: "12px 16px", borderRadius: "10px", border: "2px solid #e0e0e0", cursor: "pointer" }}
                       onMouseEnter={e => (e.currentTarget.style.borderColor = "#6c63ff")}
@@ -500,13 +507,14 @@ export default function NewSaleModal({ saleChannels, orderStatuses, paymentStatu
                       <div style={{ fontWeight: 700, fontSize: "14px", marginBottom: "4px" }}>
                         Anticipo #{adv.id}
                         <span style={{ marginLeft: "8px", fontSize: "12px", color: "#27ae60", fontWeight: 700 }}>
-                          ${adv.remaining.toLocaleString("es-AR")} disponible
+                          ${effRemaining.toLocaleString("es-AR")} disponible
                         </span>
                       </div>
                       {adv.notes && <div style={{ fontSize: "12px", color: "#888" }}>{adv.notes}</div>}
                       <div style={{ fontSize: "11px", color: "#aaa", marginTop: "2px" }}>{new Date(adv.created_at).toLocaleDateString("es-AR")}</div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
               <button onClick={() => setAdvanceModalOpen(false)} style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontSize: "14px" }}>Cancelar</button>
