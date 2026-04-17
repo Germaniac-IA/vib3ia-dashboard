@@ -126,7 +126,7 @@ export default function CobrosPage() {
           session_id: null,
           financial_account_id: Number(movForm.financial_account_id),
           type: "in",
-          reason: "",
+          reason: "nv_payment",
           order_id: movForm.order_id ? Number(movForm.order_id) : undefined,
           client_id: movForm.client_id ? Number(movForm.client_id) : undefined,
           amount: Number(movForm.amount),
