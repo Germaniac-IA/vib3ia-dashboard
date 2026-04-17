@@ -5,7 +5,7 @@ import { fetchJson } from "../../lib";
 
 type Delivery = {
   id: number; order_id: number; address: string; scheduled_date: string;
-  delivered_date: string; status: string; notes: string; created_at: string;
+  delivered_date: string; order_status_id: number; status_name: string; notes: string; created_at: string;
   order_number: string; order_total: number;
   contact_name: string; contact_phone: string;
   status_color: string; delivery_fee: number;
@@ -86,12 +86,12 @@ export default function EntregasPage() {
       .catch(e => alert("Error al cancelar: " + e));
   }
 
-  function openStatusEdit(d: Delivery) { setShowStatusEdit(d.id); setEditStatus(d.status); }
+  function openStatusEdit(d: Delivery) { setShowStatusEdit(d.id); setEditStatus(String(d.order_status_id)); }
   function saveStatusEdit(id: number) {
     fetch(`http://149.50.148.131:4000/api/deliveries/${id}`, {
       method: "PUT",
       headers: { "Authorization": "Bearer " + (localStorage.getItem("token")||""), "Content-Type": "application/json" },
-      body: JSON.stringify({ status: editStatus }),
+      body: JSON.stringify({ order_status_id: Number(editStatus) }),
     }).then(() => { setShowStatusEdit(null); load(); }).catch(e => alert("Error: " + e));
   }
 
@@ -108,18 +108,18 @@ export default function EntregasPage() {
     fetch(`http://149.50.148.131:4000/api/deliveries/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: newStatus }),
+      body: JSON.stringify({ order_status_id: 3 }),
     })
       .then(() => load())
       .catch(() => alert("Error al actualizar estado"));
   }
 
   const filtered = activeFilter
-    ? deliveries.filter(d => d.status === activeFilter)
+    ? deliveries.filter(d => d.status_name_name_name === activeFilter)
     : deliveries;
 
   function getStatusColor(status: string) {
-    return STATUS_COLORS[status] || "#888";
+    return STATUS_COLORS[status_name] || "#888";
   }
 
   function getDelayDays(scheduled_date: string): number | null {
@@ -192,7 +192,7 @@ export default function EntregasPage() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "12px" }}>
           {filtered.map(d => {
             const delay = getDelayDays(d.scheduled_date);
-            const statusColor = getStatusColor(d.status);
+            const statusColor = getStatusColor(d.status_name_name);
             return (
               <div key={d.id} style={{ background: "#fff", borderRadius: "12px", padding: "16px", boxShadow: "0 1px 4px rgba(0,0,0,0.08)", border: "1px solid #f0f0f0" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
@@ -200,7 +200,7 @@ export default function EntregasPage() {
                     <div style={{ fontWeight: 800, fontSize: "15px", color: "#1a1a2e" }}>{d.order_number}</div>
                     <div style={{ fontSize: "12px", color: "#888", marginTop: "2px" }}>{d.contact_name || "Sin cliente"}</div>
                   </div>
-                  <span style={{ background: statusColor, color: "#fff", borderRadius: "12px", padding: "3px 10px", fontSize: "11px", fontWeight: 700 }}>{d.status}</span>
+                  <span style={{ background: statusColor, color: "#fff", borderRadius: "12px", padding: "3px 10px", fontSize: "11px", fontWeight: 700 }}>{d.status_name_name}</span>
                 </div>
                 <div style={{ fontSize: "13px", color: "#555", marginBottom: "6px" }}>📍 {d.address || "—"}</div>
                 <div style={{ fontSize: "13px", color: "#555", marginBottom: "6px" }}>📅 {d.scheduled_date ? new Date(d.scheduled_date + "T00:00:00").toLocaleDateString("es-AR") : "—"} {delay ? <span style={{ color: "#e74c3c", fontWeight: 700 }}> +{delay}d</span> : ""}</div>
@@ -208,9 +208,9 @@ export default function EntregasPage() {
                 <div style={{ display: "flex", gap: "5px", flexWrap: "wrap", marginTop: "8px", borderTop: "1px solid #f0f0f0", paddingTop: "10px" }}>
                   <button onClick={() => openStatusEdit(d)} style={{ background: "#1a1a2e", border: "none", borderRadius: "6px", padding: "5px 10px", color: "#fff", cursor: "pointer", fontSize: "12px", fontWeight: 600 }}>✏️ Estado</button>
                   <button onClick={() => openAddressEdit(d)} style={{ background: "#8e44ad", border: "none", borderRadius: "6px", padding: "5px 10px", color: "#fff", cursor: "pointer", fontSize: "12px", fontWeight: 600 }}>📍 Domicilio</button>
-                  {d.status !== "Entregado" && d.status !== "Cancelado" && <button onClick={() => handleConfirm(d.id)} style={{ background: "#27ae60", border: "none", borderRadius: "6px", padding: "5px 10px", color: "#fff", cursor: "pointer", fontSize: "12px", fontWeight: 600 }}>✓ Entregado</button>}
-                  {d.status === "Entregado" && <span style={{ color: "#27ae60", fontSize: "12px", fontWeight: 600 }}>✓ Entregado</span>}
-                  {d.status === "Cancelado" && <span style={{ color: "#e74c3c", fontSize: "12px", fontWeight: 600 }}>✕ Cancelado</span>}
+                  {d.status_name_name !== "Entregado" && d.status_name_name !== "Cancelado" && <button onClick={() => handleConfirm(d.id)} style={{ background: "#27ae60", border: "none", borderRadius: "6px", padding: "5px 10px", color: "#fff", cursor: "pointer", fontSize: "12px", fontWeight: 600 }}>✓ Entregado</button>}
+                  {d.status_name_name === "Entregado" && <span style={{ color: "#27ae60", fontSize: "12px", fontWeight: 600 }}>✓ Entregado</span>}
+                  {d.status_name_name === "Cancelado" && <span style={{ color: "#e74c3c", fontSize: "12px", fontWeight: 600 }}>✕ Cancelado</span>}
                 </div>
               </div>
             );
@@ -233,15 +233,15 @@ export default function EntregasPage() {
             <tbody>
               {filtered.map(d => {
                 const delay = getDelayDays(d.scheduled_date);
-                const statusColor = getStatusColor(d.status);
+                const statusColor = getStatusColor(d.status_name_name);
                 return (
                   <tr key={d.id} style={{ borderTop: "1px solid #f0f0f0" }}>
                     <td style={{ padding: "10px 12px" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                         <span style={{ background: statusColor, color: "#fff", borderRadius: "12px", padding: "3px 10px", fontSize: "11px", fontWeight: 700, whiteSpace: "nowrap" }}>
-                          {d.status}
+                          {d.status_name_name}
                         </span>
-                        {delay !== null && d.status !== "Entregado" && d.status !== "Cancelado" && (
+                        {delay !== null && d.status_name_name !== "Entregado" && d.status_name_name !== "Cancelado" && (
                           <span style={{ background: delay >= 3 ? "#e74c3c" : delay >= 1 ? "#f39c12" : "#27ae60", color: "#fff", borderRadius: "8px", padding: "2px 6px", fontSize: "10px", fontWeight: 700 }}>
                             +{delay}d
                           </span>
@@ -276,9 +276,9 @@ export default function EntregasPage() {
                       <div style={{ display: "flex", gap: "4px", flexWrap: "nowrap" }}>
                     <button onClick={() => openStatusEdit(d)} title="Editar estado" style={{ background: "#1a1a2e", border: "none", borderRadius: "6px", padding: "4px 8px", color: "#fff", cursor: "pointer", fontSize: "11px", fontWeight: 600, whiteSpace: "nowrap" }}>✏️</button>
                     <button onClick={() => openAddressEdit(d)} title="Editar domicilio" style={{ background: "#8e44ad", border: "none", borderRadius: "6px", padding: "4px 8px", color: "#fff", cursor: "pointer", fontSize: "11px", fontWeight: 600 }}>📍</button>
-                    {d.status !== "Entregado" && d.status !== "Cancelado" && <button onClick={() => handleConfirm(d.id)} title="Marcar entregado" style={{ background: "#27ae60", border: "none", borderRadius: "6px", padding: "4px 8px", color: "#fff", cursor: "pointer", fontSize: "11px", fontWeight: 600 }}>✓</button>}
-                    {d.status === "Entregado" && <span style={{ color: "#27ae60", fontSize: "16px" }}>✓</span>}
-                    {d.status === "Cancelado" && <span style={{ color: "#e74c3c", fontSize: "16px" }}>✕</span>}
+                    {d.status_name_name !== "Entregado" && d.status_name_name !== "Cancelado" && <button onClick={() => handleConfirm(d.id)} title="Marcar entregado" style={{ background: "#27ae60", border: "none", borderRadius: "6px", padding: "4px 8px", color: "#fff", cursor: "pointer", fontSize: "11px", fontWeight: 600 }}>✓</button>}
+                    {d.status_name_name === "Entregado" && <span style={{ color: "#27ae60", fontSize: "16px" }}>✓</span>}
+                    {d.status_name_name === "Cancelado" && <span style={{ color: "#e74c3c", fontSize: "16px" }}>✕</span>}
                   </div>
                     </td>
                   </tr>
