@@ -99,6 +99,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <div style={{ flex: 1 }} />
           {!session ? (
             <button onClick={handleOpen} disabled={opening} style={{ background: "#27ae60", border: "none", borderRadius: "8px", padding: "6px 12px", color: "#fff", cursor: "pointer", fontSize: "13px", fontWeight: 700, opacity: opening ? 0.7 : 1 }}>💰 Abrir</button>
+          ) : session.user_id !== session.my_user_id ? (
+            <button onClick={handleLeave} style={{ background: "#f39c12", border: "none", borderRadius: "8px", padding: "6px 12px", color: "#fff", cursor: "pointer", fontSize: "13px", fontWeight: 700 }}>🚪 Salir</button>
           ) : (
             <button onClick={() => setShowClose(true)} style={{ background: "#e74c3c", border: "none", borderRadius: "8px", padding: "6px 12px", color: "#fff", cursor: "pointer", fontSize: "13px", fontWeight: 700 }}>🔒 Cerrar</button>
           )}

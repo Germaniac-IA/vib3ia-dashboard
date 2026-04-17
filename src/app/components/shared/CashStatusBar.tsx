@@ -38,6 +38,19 @@ function authHeaders() {
       .catch(() => setSession(null));
   }
 
+
+  async function handleLeave() {
+    try {
+      await fetch(`http://149.50.148.131:4000/api/cash-sessions/leave`, {
+        method: 'POST',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+      });
+      load();
+    } catch (e) {
+      alert("Error al salir de caja");
+    }
+  }
+
   useEffect(() => { load(); }, []);
 
   async function handleOpen() {
@@ -124,7 +137,7 @@ function authHeaders() {
     finally { setClosing(false); }
   }
 
-  return { session, openSessions, showOpen, setShowOpen, showClose, setShowClose, closeForm, setCloseForm, closing, opening, handleOpen, handleJoin, handleOpenOwn, handleClose };
+  return { session, openSessions, showOpen, setShowOpen, showClose, setShowClose, closeForm, setCloseForm, closing, opening, handleOpen, handleJoin, handleOpenOwn, handleClose, handleLeave };
 }
 
 // StatusBar - just shows stats when open
