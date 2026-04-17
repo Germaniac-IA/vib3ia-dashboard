@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { fetchJson, postJson, deleteJson } from "../../lib";
 import { Card, Badge, PageTitle, Loading, Empty } from "../../components/shared/UI";
+import EditPurchaseOrderModal from "../../components/EditPurchaseOrderModal";
 
 type PO = { id: number; order_number: string; provider_name: string; subtotal: number; discount_value: number; delivery_fee: number; total: number; status_name: string; status_color: string; payment_status_name: string; payment_status_color: string; notes: string; created_at: string; };
 type PS = { id: number; name: string; color: string; };
@@ -45,6 +46,7 @@ export default function ComprasPage() {
   const [pst, setPst] = useState<Pst[]>([]);
   const [showNew, setShowNew] = useState(false);
   const [detailId, setDetailId] = useState<number | null>(null);
+  const [editId, setEditId] = useState<number | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   function load() {
@@ -135,6 +137,9 @@ export default function ComprasPage() {
                   {o.status_name !== "Recibido" && (
                     <button onClick={e => { e.stopPropagation(); handleReceive(o.id); }} style={{ padding: "5px 8px", borderRadius: "6px", border: "1px solid #27ae60", background: "#fff", color: "#27ae60", cursor: "pointer", fontSize: "12px", fontWeight: 700 }}>✅ Recibir</button>
                   )}
+                  {o.status_name !== "Recibido" && (
+                    <button onClick={e => { e.stopPropagation(); setEditId(o.id); }} style={{ padding: "5px 8px", borderRadius: "6px", border: "1px solid #1a1a2e", background: "#fff", color: "#1a1a2e", cursor: "pointer", fontSize: "12px" }}>✏️</button>
+                  )}
                   <button onClick={e => { e.stopPropagation(); handleDelete(o.id); }} style={{ padding: "5px 8px", borderRadius: "6px", border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontSize: "12px", color: "#e74c3c" }}>🗑️</button>
                 </div>
               </div>
@@ -145,6 +150,7 @@ export default function ComprasPage() {
 
       {showNew && <NewNPModal onClose={() => setShowNew(false)} onCreated={() => { setShowNew(false); setRefreshKey(k => k + 1); }} />}
       {detailId && <NPDetailModal orderId={detailId} onClose={() => setDetailId(null)} onUpdated={() => setRefreshKey(k => k + 1)} />}
+      {editId && <EditPurchaseOrderModal orderId={editId} onClose={() => setEditId(null)} onUpdated={() => { setEditId(null); setRefreshKey(k => k + 1); }} />}
     </div>
   );
 }
@@ -278,7 +284,7 @@ function NewNPModal({ onClose, onCreated }: { onClose: () => void; onCreated: ()
               <label style={{ fontSize: "12px", fontWeight: 700, color: "#666" }}>Proveedor</label>
               <button onClick={() => setShowNewProvider(true)} style={{ fontSize: "11px", background: "none", border: "1px solid #27ae60", color: "#27ae60", padding: "2px 8px", borderRadius: "4px", cursor: "pointer" }}>➕ Nuevo</button>
             </div>
-            <input value={provSearch} onChange={e => { setProvSearch(e.target.value); loadProviders(e.target.value); }} placeholder="Buscar proveedor..." style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
+            <input value={provSearch} onChange={e => { setProvSearch(e.target.value); loadProviders(e.target.value); }} onFocus={() => { if (!provSearch) loadProviders(""); }} placeholder="Buscar proveedor..." style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
             {providers.length > 0 && providers.map(p => (
               <div key={p.id} onClick={() => { setF("provider_id", String(p.id)); setProvSearch(p.name); setProviders([]); }} style={{ padding: "8px 12px", borderBottom: "1px solid #f0", cursor: "pointer", fontSize: "13px" }}>
                 <b>{p.name}</b> {p.business_name && <span style={{ color: "#888" }}>· {p.business_name}</span>}
@@ -316,8 +322,8 @@ function NewNPModal({ onClose, onCreated }: { onClose: () => void; onCreated: ()
               <label style={{ fontSize: "12px", fontWeight: 700, color: "#666" }}>Productos</label>
               <button onClick={() => setShowNewProduct(true)} style={{ fontSize: "11px", background: "none", border: "1px solid #27ae60", color: "#27ae60", padding: "2px 8px", borderRadius: "4px", cursor: "pointer" }}>➕ Nuevo</button>
             </div>
-            <input value={pSearch} onChange={e => setPSearch(e.target.value)} placeholder="Buscar producto..." style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
-            {pSearch && fp.slice(0, 6).map(p => (
+            <input value={pSearch} onChange={e => setPSearch(e.target.value)} onFocus={() => { if (!pSearch && products.length === 0) fetchJson<Product[]>("/products").then(setProducts).catch(() => {}); }} placeholder="Buscar producto..." style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
+            {fp.slice(0, 10).map(p => (
               <div key={p.id} onClick={() => { addItem(p, "product"); setPSearch(""); }} style={{ padding: "8px 12px", borderBottom: "1px solid #f0", cursor: "pointer", display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
                 <span>{p.name}</span>
                 <span style={{ fontWeight: 700, color: "#888" }}>${Number(p.price).toLocaleString("es-AR")}</span>
@@ -346,8 +352,8 @@ function NewNPModal({ onClose, onCreated }: { onClose: () => void; onCreated: ()
               <label style={{ fontSize: "12px", fontWeight: 700, color: "#666" }}>Insumos</label>
               <button onClick={() => setShowNewInsumo(true)} style={{ fontSize: "11px", background: "none", border: "1px solid #27ae60", color: "#27ae60", padding: "2px 8px", borderRadius: "4px", cursor: "pointer" }}>➕ Nuevo</button>
             </div>
-            <input value={iiSearch} onChange={e => setIiSearch(e.target.value)} placeholder="Buscar insumo..." style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
-            {iiSearch && fi.slice(0, 6).map(i => (
+            <input value={iiSearch} onChange={e => setIiSearch(e.target.value)} onFocus={() => { if (!iiSearch && inputItems.length === 0) fetchJson<InputItem[]>("/input-items").then(setInputItems).catch(() => {}); }} placeholder="Buscar insumo..." style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
+            {fi.slice(0, 10).map(i => (
               <div key={i.id} onClick={() => { addItem(i, "input_item"); setIiSearch(""); }} style={{ padding: "8px 12px", borderBottom: "1px solid #f0", cursor: "pointer", display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
                 <span>{i.name} <span style={{ fontSize: "11px", color: "#888" }}>({i.unit})</span></span>
                 <span style={{ fontWeight: 700, color: "#888" }}>${Number(i.default_cost).toLocaleString("es-AR")}</span>
