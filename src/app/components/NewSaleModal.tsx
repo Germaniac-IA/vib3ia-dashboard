@@ -66,6 +66,41 @@ export default function NewSaleModal({ saleChannels, orderStatuses, paymentStatu
     }).catch(console.error);
   }, []);
 
+  // Paga en el acto
+  const [pagaEnElActo, setPagaEnElActo] = useState(false);
+  const [pagoAccountId, setPagoAccountId] = useState("");
+  const [montoPagado, setMontoPagado] = useState("");
+  const [clienteAdvances, setClienteAdvances] = useState<{ id: number; amount: number; remaining: number; notes: string; created_at: string }[]>([]);
+  const [advanceModalOpen, setAdvanceModalOpen] = useState(false);
+  const [advanceSeleccionado, setAdvanceSeleccionado] = useState<{ id: number; remaining: number } | null>(null);
+  const [advanceMontoUsar, setAdvanceMontoUsar] = useState("");
+
+  // Load advances when contact selected
+  useEffect(() => {
+    if (selectedContact) {
+      fetchJson<any[]>("/client-advances?client_id=" + selectedContact.id)
+        .then(setClienteAdvances)
+        .catch(console.error);
+      // Auto-fill montoPagado with total
+      setMontoPagado(String(total));
+      // Reset advance selection
+      setAdvanceSeleccionado(null);
+      setAdvanceMontoUsar("");
+    } else {
+      setClienteAdvances([]);
+      setAdvanceSeleccionado(null);
+    }
+  }, [selectedContact?.id]);
+
+  // Update montoPagado when total changes and pagaEnElActo
+  useEffect(() => {
+    if (pagaEnElActo && total > 0 && !advanceSeleccionado) {
+      setMontoPagado(String(total));
+    }
+  }, [total]);
+
+
+
   const isLocalChannel = saleChannels.find(c => String(c.id) === form.sale_channel_id)?.name?.toLowerCase().includes("local");
 
   const filteredContacts = selectedContact
@@ -110,7 +145,7 @@ export default function NewSaleModal({ saleChannels, orderStatuses, paymentStatu
     if (items.length === 0) { alert("Agregá al menos un producto"); return; }
     setSaving(true);
     try {
-      await postJson("/orders", {
+      const orderResult = await postJson<{ id: number }>("/orders", {
         contact_id: selectedContact.id,
         seller_id: form.seller_id ? Number(form.seller_id) : undefined,
         sale_channel_id: form.sale_channel_id ? Number(form.sale_channel_id) : undefined,
@@ -132,6 +167,33 @@ export default function NewSaleModal({ saleChannels, orderStatuses, paymentStatu
           notes: "",
         } : undefined,
       });
+
+      // Si "Paga en el acto" está activado, registrar el cobro
+      if (pagaEnElActo && montoPagado && Number(montoPagado) > 0) {
+        try {
+          // Registrar movimiento de caja (ingreso)
+          await postJson("/cash-movements", {
+            financial_account_id: Number(pagoAccountId),
+            type: "in",
+            reason: advanceSeleccionado ? "advance" : "nv_payment",
+            order_id: orderResult.id,
+            client_id: selectedContact.id,
+            amount: Number(montoPagado),
+            notes: advanceSeleccionado ? `Usa anticipo #${advanceSeleccionado.id}` : "Cobro en el acto",
+          });
+
+          // Si se usó anticipo, registrar el uso
+          if (advanceSeleccionado && advanceMontoUsar && Number(advanceMontoUsar) > 0) {
+            await postJson(`/client-advances/${advanceSeleccionado.id}/use`, {
+              amount: Number(advanceMontoUsar),
+            });
+          }
+        } catch (e: any) {
+          console.error("Error registrando cobro:", e);
+          // No fallar la creación de la orden por un error en el cobro
+        }
+      }
+
       onCreated();
     } catch (e: any) {
       alert("Error: " + (e?.message || "No se pudo crear la venta"));
@@ -158,6 +220,11 @@ export default function NewSaleModal({ saleChannels, orderStatuses, paymentStatu
             <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 12px", background: "#f0fff4", borderRadius: "8px", border: "1px solid #27ae60" }}>
               <span style={{ flex: 1, fontSize: "14px", fontWeight: 700 }}>{selectedContact.name}</span>
               {selectedContact.phone && <span style={{ fontSize: "12px", color: "#666" }}>{selectedContact.phone}</span>}
+              {clienteAdvances.length > 0 && (
+                <span style={{ fontSize: "11px", background: "#6c63ff", color: "#fff", padding: "2px 8px", borderRadius: "4px", fontWeight: 700 }}>
+                  💳 {clienteAdvances.reduce((s, a) => s + a.remaining, 0).toLocaleString("es-AR")} anticipo
+                </span>
+              )}
               <button onClick={() => { setSelectedContact(null); setContactSearch(""); }}
                 style={{ background: "none", border: "none", color: "#e74c3c", cursor: "pointer", fontSize: "13px" }}>✕</button>
             </div>
@@ -346,6 +413,48 @@ export default function NewSaleModal({ saleChannels, orderStatuses, paymentStatu
         </div>
       </div>
 
+      {/* Paga en el acto */}
+      <div style={{ marginTop: "16px", borderTop: "2px solid #1a1a2e", paddingTop: "12px" }}>
+        <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", padding: "10px 0" }}>
+          <input type="checkbox" checked={pagaEnElActo} onChange={e => { setPagaEnElActo(e.target.checked); if (e.target.checked) setMontoPagado(String(total)); }}
+            style={{ width: "18px", height: "18px" }} />
+          <span style={{ fontWeight: 700, fontSize: "14px" }}>💰 Paga en el acto (cobrar ahora)</span>
+        </label>
+
+        {pagaEnElActo && (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginTop: "8px" }}>
+            <div>
+              <label style={{ fontSize: "12px", fontWeight: 700, color: "#666", display: "block", marginBottom: "4px" }}>Cuenta *</label>
+              <select value={pagoAccountId} onChange={e => setPagoAccountId(e.target.value)} style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }}>
+                <option value="">Seleccionar cuenta</option>
+                {paymentMethods.map(pm => <option key={pm.id} value={pm.id}>{pm.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: "12px", fontWeight: 700, color: "#666", display: "block", marginBottom: "4px" }}>Monto a cobrar *</label>
+              <input type="number" value={montoPagado} onChange={e => setMontoPagado(e.target.value)} placeholder="0.00"
+                style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
+            </div>
+          </div>
+        )}
+
+        {pagaEnElActo && selectedContact && (
+          <div style={{ marginTop: "8px" }}>
+            {advanceSeleccionado ? (
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 12px", background: "#f0f4ff", borderRadius: "8px", border: "1px solid #6c63ff" }}>
+                <span style={{ fontSize: "14px" }}>💳 Anticipo usado: <b>${Number(advanceMontoUsar).toLocaleString("es-AR")}</b></span>
+                <span style={{ fontSize: "12px", color: "#666" }}>(resta: ${(advanceSeleccionado.remaining - Number(advanceMontoUsar)).toLocaleString("es-AR")})</span>
+                <button onClick={() => { setAdvanceSeleccionado(null); setAdvanceMontoUsar(""); }} style={{ marginLeft: "auto", background: "none", border: "none", color: "#e74c3c", cursor: "pointer", fontSize: "13px" }}>✕</button>
+              </div>
+            ) : (
+              <button onClick={() => setAdvanceModalOpen(true)} style={{ padding: "7px 14px", borderRadius: "8px", border: "1px solid #6c63ff", background: "#fff", color: "#6c63ff", cursor: "pointer", fontSize: "13px", fontWeight: 700 }}>
+                💳 Usar anticipo del cliente
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Resumen y acciones */}
       <div style={{ marginTop: "16px", borderTop: "2px solid #1a1a2e", paddingTop: "12px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", marginBottom: "4px" }}>
@@ -371,6 +480,39 @@ export default function NewSaleModal({ saleChannels, orderStatuses, paymentStatu
             {saving ? "Guardando..." : "✅ Crear Venta"}
           </button>
         </div>
+
+        {/* Advance selection modal */}
+        {advanceModalOpen && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }} onClick={e => e.target === e.currentTarget && setAdvanceModalOpen(false)}>
+            <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "400px" }}>
+              <h3 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 800 }}>💳 Usar Anticipo del Cliente</h3>
+              {clienteAdvances.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "20px", color: "#888", fontSize: "13px" }}>
+                  Este cliente no tiene anticipos disponibles.
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "12px", maxHeight: "280px", overflowY: "auto" }}>
+                  {clienteAdvances.map(adv => (
+                    <div key={adv.id} onClick={() => { setAdvanceSeleccionado({ id: adv.id, remaining: adv.remaining }); setAdvanceMontoUsar(String(Math.min(Number(montoPagado), adv.remaining))); setAdvanceModalOpen(false); }}
+                      style={{ padding: "12px 16px", borderRadius: "10px", border: "2px solid #e0e0e0", cursor: "pointer" }}
+                      onMouseEnter={e => (e.currentTarget.style.borderColor = "#6c63ff")}
+                      onMouseLeave={e => (e.currentTarget.style.borderColor = "#e0e0e0")}>
+                      <div style={{ fontWeight: 700, fontSize: "14px", marginBottom: "4px" }}>
+                        Anticipo #{adv.id}
+                        <span style={{ marginLeft: "8px", fontSize: "12px", color: "#27ae60", fontWeight: 700 }}>
+                          ${adv.remaining.toLocaleString("es-AR")} disponible
+                        </span>
+                      </div>
+                      {adv.notes && <div style={{ fontSize: "12px", color: "#888" }}>{adv.notes}</div>}
+                      <div style={{ fontSize: "11px", color: "#aaa", marginTop: "2px" }}>{new Date(adv.created_at).toLocaleDateString("es-AR")}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button onClick={() => setAdvanceModalOpen(false)} style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontSize: "14px" }}>Cancelar</button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
