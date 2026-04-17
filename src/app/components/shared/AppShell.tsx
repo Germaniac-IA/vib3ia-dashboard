@@ -11,7 +11,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const {
     session, openSessions, showOpen, setShowOpen, showClose, setShowClose,
     closeForm, setCloseForm, closing, opening, handleOpen, handleJoin,
-    handleOpenOwn, handleClose
+    handleOpenOwn, handleClose, handleLeave
   } = useCashSession();
 
   function handleLogout() {
