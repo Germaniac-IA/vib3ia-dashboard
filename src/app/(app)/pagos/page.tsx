@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { fetchJson, postJson, deleteJson } from "../../lib";
 import { Card, PageTitle, Loading, Empty } from "../../components/shared/UI";
 
-type CashMovement = { id: number; type: string; reason: string; amount: number; account_name: string; supplier_name: string; order_number: string; notes: string; created_at: string; };
+type CashMovement = { id: number; type: string; reason: string; amount: number; account_name: string; supplier_name?: string; provider_name?: string; order_number?: string; purchase_order_id?: number; payment_status_name?: string; payment_status_color?: string; notes?: string; created_at: string; };
 type PaymentMethod = { id: number; name: string; requires_arqueo: boolean };
 type Supplier = { id: number; name: string; phone: string; whatsapp: string; };
 type UnpaidNP = { id: number; order_number: string; provider_name: string; total: number; payment_paid: number; payment_pending: number; };
@@ -37,8 +37,8 @@ export default function PagosPage() {
   function load() {
     setLoading(true);
     Promise.all([
-      fetchJson<CashMovement[]>("/cash-movements?type=out&period=" + period),
-      fetchJson<Stats>("/cash/stats?period=" + period),
+      fetchJson<CashMovement[]>("/payment-movements?period=" + period),
+      fetchJson<Stats>("/payment/stats?period=" + period),
       fetchJson<PaymentMethod[]>("/payment-methods"),
       fetchJson<Supplier[]>("/providers"),
     ]).then(([mov, st, pm, ss]) => {
@@ -161,24 +161,44 @@ export default function PagosPage() {
 
       {loading ? <Loading /> : movements.length === 0 ? <Empty message="Sin pagos registrados" /> : (
         <div style={{ display: "grid", gap: "6px" }}>
-          {movements.map(m => (
+          {movements.map(m => {
+            const title = m.reason === "np_payment" ? "Pago de NP" : m.reason === "advance" ? "Anticipo a proveedor" : m.reason === "other_out" ? "Egreso" : "Otro";
+            const provider = m.provider_name || m.supplier_name || "Sin proveedor";
+            return (
             <Card key={m.id}>
-              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                <span style={{ fontSize: "20px" }}>📤</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span style={{ fontWeight: 700, fontSize: "14px", color: "#e74c3c" }}>-${Number(m.amount).toLocaleString("es-AR")}</span>
-                    <span style={{ fontSize: "12px", color: "#888" }}>{m.account_name}</span>
-                    <span style={{ fontSize: "11px", background: "#f0f0f0", padding: "2px 6px", borderRadius: "4px", color: "#666" }}>
-                      {m.reason === "np_payment" ? "NP " + (m.order_number || "") : m.reason === "advance" ? "Anticipo" : m.reason === "other_out" ? "Egreso" : "Otro"}
-                    </span>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
+                <div style={{ width: "38px", height: "38px", borderRadius: "10px", background: "#fff1f0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px", flexShrink: 0 }}>📤</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", alignItems: "flex-start", flexWrap: "wrap" }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                        <span style={{ fontWeight: 800, fontSize: "15px", color: "#e74c3c" }}>-${Number(m.amount).toLocaleString("es-AR")}</span>
+                        <span style={{ fontSize: "12px", color: "#666", fontWeight: 700 }}>{title}</span>
+                        {m.payment_status_name && (
+                          <span style={{ fontSize: "11px", background: m.payment_status_color || "#f4f4f4", color: "#fff", padding: "2px 8px", borderRadius: "999px", fontWeight: 700 }}>
+                            {m.payment_status_name}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: "13px", color: "#222", fontWeight: 700, marginBottom: "6px" }}>
+                        {provider}
+                        {m.order_number ? ` · ${m.order_number}` : ""}
+                      </div>
+                    </div>
+                    <button onClick={() => handleDeleteMovement(m.id)} style={{ background: "none", border: "none", color: "#e74c3c", cursor: "pointer", fontSize: "14px" }} title="Anular">🗑️</button>
                   </div>
-                  <div style={{ fontSize: "11px", color: "#aaa" }}>{new Date(m.created_at).toLocaleString("es-AR")}{m.notes && " · " + m.notes}</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "6px" }}>
+                    <span style={{ fontSize: "11px", background: "#f6f6f6", color: "#666", padding: "3px 8px", borderRadius: "999px" }}>Cuenta: {m.account_name}</span>
+                    {m.purchase_order_id && <span style={{ fontSize: "11px", background: "#fff5e6", color: "#8a5a00", padding: "3px 8px", borderRadius: "999px" }}>Imputado a NP #{m.purchase_order_id}</span>}
+                  </div>
+                  <div style={{ fontSize: "11px", color: "#999" }}>
+                    {new Date(m.created_at).toLocaleString("es-AR")}
+                    {m.notes ? ` · ${m.notes}` : ""}
+                  </div>
                 </div>
-                <button onClick={() => handleDeleteMovement(m.id)} style={{ background: "none", border: "none", color: "#e74c3c", cursor: "pointer", fontSize: "14px" }} title="Anular">🗑️</button>
               </div>
             </Card>
-          ))}
+          )})}
         </div>
       )}
 
