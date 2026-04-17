@@ -102,7 +102,7 @@ function authHeaders() {
     try {
       const r = await fetch(`http://149.50.148.131:4000/api/cash-sessions/${session.id}/close`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
         body: JSON.stringify({
           final_amount: Number(closeForm.total_cash) + Number(closeForm.total_digital) + Number(closeForm.total_other),
           total_cash: Number(closeForm.total_cash) || 0,
