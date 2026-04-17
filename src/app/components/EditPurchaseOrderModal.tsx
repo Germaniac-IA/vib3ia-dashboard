@@ -209,7 +209,7 @@ export default function EditPurchaseOrderModal({ orderId, onClose, onUpdated }: 
           <div style={{ marginBottom: "12px" }}>
             <button onClick={() => setShowNewProduct(true)} style={{ fontSize: "11px", background: "none", border: "1px solid #27ae60", color: "#27ae60", padding: "2px 8px", borderRadius: "4px", cursor: "pointer", marginBottom: "4px" }}>➕ Nuevo</button>
             <input value={pSearch} onChange={e => setPSearch(e.target.value)} placeholder="Buscar producto..." style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
-            {pSearch && fp.slice(0, 6).map(p => (
+            {fp.slice(0, 10).map(p => (
               <div key={p.id} onClick={() => { addItem(p, "product"); setPSearch(""); }} style={{ padding: "8px 12px", borderBottom: "1px solid #f0", cursor: "pointer", display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
                 <span>{p.name}</span><span style={{ fontWeight: 700, color: "#888" }}>${Number(p.price).toLocaleString("es-AR")}</span>
               </div>
@@ -235,7 +235,7 @@ export default function EditPurchaseOrderModal({ orderId, onClose, onUpdated }: 
           <div style={{ marginBottom: "12px" }}>
             <button onClick={() => setShowNewInsumo(true)} style={{ fontSize: "11px", background: "none", border: "1px solid #27ae60", color: "#27ae60", padding: "2px 8px", borderRadius: "4px", cursor: "pointer", marginBottom: "4px" }}>➕ Nuevo</button>
             <input value={iiSearch} onChange={e => setIiSearch(e.target.value)} placeholder="Buscar insumo..." style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
-            {iiSearch && fi.slice(0, 6).map(i => (
+            {fi.slice(0, 10).map(i => (
               <div key={i.id} onClick={() => { addItem(i, "input_item"); setIiSearch(""); }} style={{ padding: "8px 12px", borderBottom: "1px solid #f0", cursor: "pointer", display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
                 <span>{i.name} <span style={{ fontSize: "11px", color: "#888" }}>({i.unit})</span></span>
                 <span style={{ fontWeight: 700, color: "#888" }}>${Number(i.default_cost).toLocaleString("es-AR")}</span>
