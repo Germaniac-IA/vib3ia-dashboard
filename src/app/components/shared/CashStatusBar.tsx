@@ -21,10 +21,20 @@ export function useCashSession() {
   const [closing, setClosing] = useState(false);
   const [opening, setOpening] = useState(false);
 
+function getToken() {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("token");
+}
+
+function authHeaders() {
+  const token = getToken();
+  return token ? { "Authorization": "Bearer " + token } : {};
+}
+
   function load() {
-    fetch(`http://149.50.148.131:4000/api/cash-sessions/current`)
-      .then(r => r.json())
-      .then(setSession)
+    fetch(`http://149.50.148.131:4000/api/cash-sessions/current`, { headers: authHeaders() })
+      .then(r => { if (!r.ok) return null; return r.json(); })
+      .then(d => setSession(d && d.id ? d : null))
       .catch(() => setSession(null));
   }
 
@@ -122,9 +132,9 @@ export default function CashStatusBar() {
   const [session, setSession] = useState<Session>(null);
 
   useEffect(() => {
-    fetch(`http://149.50.148.131:4000/api/cash-sessions/current`)
-      .then(r => r.json())
-      .then(d => setSession(d.id ? d : null))
+    fetch(`http://149.50.148.131:4000/api/cash-sessions/current`, { headers: authHeaders() })
+      .then(r => { if (!r.ok) return null; return r.json(); })
+      .then(d => setSession(d && d.id ? d : null))
       .catch(() => setSession(null));
   }, []);
 
