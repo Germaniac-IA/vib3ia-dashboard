@@ -40,6 +40,7 @@ export default function ComprasPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
+  const [filterPayment, setFilterPayment] = useState("");
   const [period, setPeriod] = useState<Period>("month");
   const [stats, setStats] = useState<Stat | null>(null);
   const [ps, setPS] = useState<PS[]>([]);
@@ -66,6 +67,7 @@ export default function ComprasPage() {
   const filtered = orders.filter(o => {
     if (search && !o.provider_name?.toLowerCase().includes(search.toLowerCase()) && !o.order_number?.toLowerCase().includes(search.toLowerCase())) return false;
     if (filterStatus && o.status_name !== filterStatus) return false;
+    if (filterPayment && o.payment_status_name !== filterPayment) return false;
     return true;
   });
 
@@ -109,9 +111,13 @@ export default function ComprasPage() {
 
       <div style={{ display: "flex", gap: "8px", marginBottom: "12px", flexWrap: "wrap" }}>
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar NP o proveedor..." style={{ flex: 1, minWidth: "160px", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
-        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{ padding: "8px 10px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }}>
-          <option value="">Estado: Todos</option>
+        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{ padding: "8px 10px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px", minWidth: "140px" }}>
+          <option value="">Estado compra: Todos</option>
           {ps.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+        </select>
+        <select value={filterPayment} onChange={e => setFilterPayment(e.target.value)} style={{ padding: "8px 10px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px", minWidth: "150px" }}>
+          <option value="">Estado pago: Todos</option>
+          {pst.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
         </select>
         <button onClick={() => setShowNew(true)} style={{ padding: "8px 16px", borderRadius: "8px", border: "none", background: "#27ae60", color: "#fff", cursor: "pointer", fontSize: "13px", fontWeight: 700 }}>➕ Nueva NP</button>
       </div>
@@ -120,9 +126,9 @@ export default function ComprasPage() {
         <div style={{ display: "grid", gap: "10px" }}>
           {filtered.map(o => (
             <Card key={o.id} onClick={() => setDetailId(o.id)} style={{ cursor: "pointer" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px", flexWrap: "wrap" }}>
                     <span style={{ fontWeight: 800, fontSize: "14px" }}>{o.order_number}</span>
                     {o.provider_name && <span style={{ fontSize: "12px", color: "#888" }}>{o.provider_name}</span>}
                   </div>
@@ -132,8 +138,17 @@ export default function ComprasPage() {
                     {o.status_name && <Badge color={o.status_color || "#888"}>{o.status_name}</Badge>}
                     {o.payment_status_name && <Badge color={o.payment_status_color || "#888"}>{o.payment_status_name}</Badge>}
                   </div>
+                  {o.items?.length > 0 && (
+                    <div style={{ marginTop: "8px", fontSize: "12px", color: "#666", display: "flex", flexDirection: "column", gap: "3px" }}>
+                      {o.items.slice(0, 3).map((item: any, idx: number) => (
+                        <div key={idx}>• {Number(item.quantity)} × {item.product_name}</div>
+                      ))}
+                      {o.items.length > 3 && <div style={{ color: "#999" }}>+ {o.items.length - 3} ítems más</div>}
+                    </div>
+                  )}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                  <button onClick={e => { e.stopPropagation(); setDetailId(o.id); }} style={{ padding: "5px 8px", borderRadius: "6px", border: "1px solid #ddd", background: "#fff", color: "#1a1a2e", cursor: "pointer", fontSize: "12px" }}>👁️</button>
                   {o.status_name !== "Recibido" && (
                     <button onClick={e => { e.stopPropagation(); handleReceive(o.id); }} style={{ padding: "5px 8px", borderRadius: "6px", border: "1px solid #27ae60", background: "#fff", color: "#27ae60", cursor: "pointer", fontSize: "12px", fontWeight: 700 }}>✅ Recibir</button>
                   )}
@@ -508,13 +523,24 @@ function NPDetailModal({ orderId, onClose, onUpdated }: any) {
           {Number(order.discount_value) > 0 && <div style={{ background: "#fde8e8", borderRadius: "8px", padding: "10px", textAlign: "center" }}><div style={{ fontSize: "11px", color: "#888" }}>Descuento</div><div style={{ fontWeight: 800, color: "#e74c3c" }}>-${Number(order.discount_value).toLocaleString("es-AR")}</div></div>}
           <div style={{ background: "#1a1a2e", borderRadius: "8px", padding: "10px", textAlign: "center", color: "#fff" }}><div style={{ fontSize: "11px", color: "#aaa" }}>Total</div><div style={{ fontWeight: 800 }}>${Number(order.total).toLocaleString("es-AR")}</div></div>
         </div>
-        <div style={{ fontWeight: 700, fontSize: "13px", marginBottom: "6px" }}>Items</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "8px", marginBottom: "12px" }}>
+          <div style={{ background: "#eef9f0", borderRadius: "8px", padding: "10px", textAlign: "center" }}><div style={{ fontSize: "11px", color: "#888" }}>Pagado</div><div style={{ fontWeight: 800, color: "#27ae60" }}>${Number(order.payment_paid || 0).toLocaleString("es-AR")}</div></div>
+          <div style={{ background: "#fff3f1", borderRadius: "8px", padding: "10px", textAlign: "center" }}><div style={{ fontSize: "11px", color: "#888" }}>Pendiente</div><div style={{ fontWeight: 800, color: "#e74c3c" }}>${Number(order.payment_pending || 0).toLocaleString("es-AR")}</div></div>
+        </div>
+        <div style={{ fontWeight: 700, fontSize: "13px", marginBottom: "6px" }}>Items comprados</div>
         {order.items?.map((item: any, idx: number) => (
           <div key={idx} style={{ display: "flex", justifyContent: "space-between", padding: "8px", borderBottom: "1px solid #f0", fontSize: "13px" }}>
             <span>{item.quantity} × {item.product_name}</span>
             <span style={{ fontWeight: 700 }}>${Number(item.subtotal).toLocaleString("es-AR")}</span>
           </div>
         ))}
+        <div style={{ fontWeight: 700, fontSize: "13px", margin: "14px 0 6px" }}>Pagos imputados</div>
+        {order.payments?.length ? order.payments.map((payment: any) => (
+          <div key={payment.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px", borderBottom: "1px solid #f0", fontSize: "13px" }}>
+            <span>{new Date(payment.created_at).toLocaleDateString("es-AR")} · {payment.account_name || "Sin cuenta"}{payment.notes ? ` · ${payment.notes}` : ""}</span>
+            <span style={{ fontWeight: 700, color: "#27ae60" }}>${Number(payment.amount).toLocaleString("es-AR")}</span>
+          </div>
+        )) : <div style={{ fontSize: "12px", color: "#888", padding: "8px 0" }}>Sin pagos imputados</div>}
         {order.notes && <div style={{ fontSize: "12px", color: "#888", fontStyle: "italic", marginTop: "8px" }}>{order.notes}</div>}
         {order.status_name !== "Recibido" && (
           <button onClick={handleReceive} style={{ marginTop: "12px", width: "100%", padding: "10px", borderRadius: "8px", border: "none", background: "#27ae60", color: "#fff", cursor: "pointer", fontWeight: 700 }}>✅ Marcar como Recibida (+stock)</button>

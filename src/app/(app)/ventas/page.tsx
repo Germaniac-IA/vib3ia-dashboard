@@ -289,6 +289,14 @@ export default function VentasPage() {
                       <Badge color={o.payment_status_color || "#888"}>{o.payment_status_name}</Badge>
                     )}
                   </div>
+                  {o.items?.length > 0 && (
+                    <div style={{ marginTop: "8px", fontSize: "12px", color: "#666", display: "flex", flexDirection: "column", gap: "3px" }}>
+                      {o.items.slice(0, 3).map((item: any, idx: number) => (
+                        <div key={idx}>• {Number(item.quantity)} × {item.product_name}</div>
+                      ))}
+                      {o.items.length > 3 && <div style={{ color: "#999" }}>+ {o.items.length - 3} ítems más</div>}
+                    </div>
+                  )}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px", alignItems: "flex-end" }}>
                   <div style={{ display: "flex", gap: "4px" }}>
