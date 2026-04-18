@@ -22,6 +22,7 @@ export default function CobrosPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [movForm, setMovForm] = useState({ financial_account_id: "", reason: "", order_id: "", client_id: "", amount: "", notes: "" });
   const [saving, setSaving] = useState(false);
+  const [hasOpenCashSession, setHasOpenCashSession] = useState(false);
 
   // NV selector state
   const [unpaidNVs, setUnpaidNVs] = useState<UnpaidNV[]>([]);
@@ -41,11 +42,13 @@ export default function CobrosPage() {
       fetchJson<Stats>("/cash/stats?period=" + period),
       fetchJson<PaymentMethod[]>("/payment-methods"),
       fetchJson<Contact[]>("/contacts"),
-    ]).then(([mov, st, pm, cc]) => {
+      fetchJson<any>("/cash-sessions/current").catch(() => null),
+    ]).then(([mov, st, pm, cc, sess]) => {
       setMovements(mov);
       setStats(st);
       setPaymentMethods(pm);
       setContacts(cc);
+      setHasOpenCashSession(Boolean(sess));
     }).catch(console.error).finally(() => setLoading(false));
   }
 
@@ -156,6 +159,10 @@ export default function CobrosPage() {
   }
 
   function openMovForm() {
+    if (!hasOpenCashSession) {
+      alert("Necesitás abrir una caja antes de registrar un cobro");
+      return;
+    }
     setSelectedNv(null);
     setSelectedContact(null);
     setNvSearch("");
@@ -163,11 +170,7 @@ export default function CobrosPage() {
     setMovForm({ financial_account_id: "", reason: "", order_id: "", client_id: "", amount: "", notes: "" });
     setUnpaidNVs([]);
     setShowMovForm(true);
-    // Load unpaid NVs on first open
-    fetch("/api/orders/unpaid")
-      .then(r => r.json())
-      .then(setUnpaidNVs)
-      .catch(console.error);
+    fetchJson<UnpaidNV[]>("/orders/unpaid").then(setUnpaidNVs).catch(console.error);
   }
 
   async function handleDeleteMovement(id: number) {
@@ -207,8 +210,9 @@ export default function CobrosPage() {
         ))}
       </div>
 
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "12px" }}>
-        <button onClick={openMovForm} style={{ padding: "8px 16px", borderRadius: "8px", border: "none", background: "#27ae60", color: "#fff", cursor: "pointer", fontSize: "13px", fontWeight: 700 }}>💰 Registrar Cobro</button>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", gap: "12px", flexWrap: "wrap" }}>
+        {!hasOpenCashSession && <div style={{ fontSize: "12px", color: "#e67e22", fontWeight: 700 }}>Abrí una caja para registrar cobros</div>}
+        <button onClick={openMovForm} disabled={!hasOpenCashSession} title={!hasOpenCashSession ? "Necesitás abrir una caja primero" : ""} style={{ padding: "8px 16px", borderRadius: "8px", border: "none", background: hasOpenCashSession ? "#27ae60" : "#bfc6cd", color: "#fff", cursor: hasOpenCashSession ? "pointer" : "not-allowed", fontSize: "13px", fontWeight: 700 }}>💰 Registrar Cobro</button>
       </div>
 
       {loading ? <Loading /> : movements.length === 0 ? <Empty message="Sin cobros registrados" /> : (

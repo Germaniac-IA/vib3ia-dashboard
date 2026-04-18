@@ -46,6 +46,7 @@ export default function ComprasPage() {
   const [ps, setPS] = useState<PS[]>([]);
   const [pst, setPst] = useState<Pst[]>([]);
   const [showNew, setShowNew] = useState(false);
+  const [hasOpenCashSession, setHasOpenCashSession] = useState(false);
   const [detailId, setDetailId] = useState<number | null>(null);
   const [editId, setEditId] = useState<number | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);

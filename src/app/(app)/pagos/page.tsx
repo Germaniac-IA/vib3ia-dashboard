@@ -22,6 +22,7 @@ export default function PagosPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [movForm, setMovForm] = useState({ financial_account_id: "", reason: "", purchase_order_id: "", supplier_id: "", amount: "", notes: "" });
   const [saving, setSaving] = useState(false);
+  const [hasOpenCashSession, setHasOpenCashSession] = useState(false);
 
   // NP selector state
   const [unpaidNPs, setUnpaidNPs] = useState<UnpaidNP[]>([]);
@@ -41,11 +42,13 @@ export default function PagosPage() {
       fetchJson<Stats>("/payment/stats?period=" + period),
       fetchJson<PaymentMethod[]>("/payment-methods"),
       fetchJson<Supplier[]>("/providers"),
-    ]).then(([mov, st, pm, ss]) => {
+      fetchJson<any>("/cash-sessions/current").catch(() => null),
+    ]).then(([mov, st, pm, ss, sess]) => {
       setMovements(mov);
       setStats(st);
       setPaymentMethods(pm);
       setSuppliers(ss);
+      setHasOpenCashSession(Boolean(sess));
     }).catch(console.error).finally(() => setLoading(false));
   }
 
@@ -109,6 +112,10 @@ export default function PagosPage() {
   }
 
   function openMovForm() {
+    if (!hasOpenCashSession) {
+      alert("Necesitás abrir una caja antes de registrar un pago");
+      return;
+    }
     setSelectedNp(null);
     setSelectedSupplier(null);
     setNpSearch("");
@@ -155,8 +162,9 @@ export default function PagosPage() {
         ))}
       </div>
 
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "12px" }}>
-        <button onClick={openMovForm} style={{ padding: "8px 16px", borderRadius: "8px", border: "none", background: "#e74c3c", color: "#fff", cursor: "pointer", fontSize: "13px", fontWeight: 700 }}>💸 Registrar Pago</button>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", gap: "12px", flexWrap: "wrap" }}>
+        {!hasOpenCashSession && <div style={{ fontSize: "12px", color: "#e67e22", fontWeight: 700 }}>Abrí una caja para registrar pagos</div>}
+        <button onClick={openMovForm} disabled={!hasOpenCashSession} title={!hasOpenCashSession ? "Necesitás abrir una caja primero" : ""} style={{ padding: "8px 16px", borderRadius: "8px", border: "none", background: hasOpenCashSession ? "#e74c3c" : "#bfc6cd", color: "#fff", cursor: hasOpenCashSession ? "pointer" : "not-allowed", fontSize: "13px", fontWeight: 700 }}>💸 Registrar Pago</button>
       </div>
 
       {loading ? <Loading /> : movements.length === 0 ? <Empty message="Sin pagos registrados" /> : (

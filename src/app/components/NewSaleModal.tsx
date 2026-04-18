@@ -26,6 +26,7 @@ export default function NewSaleModal({ saleChannels, orderStatuses, paymentStatu
   const [users, setUsers] = useState<User[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [saving, setSaving] = useState(false);
+  const [hasOpenCashSession, setHasOpenCashSession] = useState(false);
 
   // Client search
   const [contactSearch, setContactSearch] = useState("");
@@ -58,11 +59,13 @@ export default function NewSaleModal({ saleChannels, orderStatuses, paymentStatu
       fetchJson<Product[]>("/products"),
       fetchJson<User[]>("/users"),
       fetchJson<PaymentMethod[]>("/payment-methods"),
-    ]).then(([c, p, u, pm]) => {
+      fetchJson<any>("/cash-sessions/current").catch(() => null),
+    ]).then(([c, p, u, pm, sess]) => {
       setContacts(c);
       setProducts(p);
       setUsers(u.filter((user: any) => user.is_active !== false));
       setPaymentMethods(pm);
+      setHasOpenCashSession(Boolean(sess));
     }).catch(console.error);
   }, []);
 
@@ -141,6 +144,7 @@ export default function NewSaleModal({ saleChannels, orderStatuses, paymentStatu
   async function handleSave() {
     if (!selectedContact) { alert("Seleccioná un cliente"); return; }
     if (items.length === 0) { alert("Agregá al menos un producto"); return; }
+    if (pagaEnElActo && !hasOpenCashSession) { alert("Necesitás abrir una caja para marcar la venta como cobrada en el momento"); return; }
     setSaving(true);
     try {
       const orderResult = await postJson<{ id: number }>("/orders", {
@@ -188,7 +192,7 @@ export default function NewSaleModal({ saleChannels, orderStatuses, paymentStatu
           }
         } catch (e: any) {
           console.error("Error registrando cobro:", e);
-          // No fallar la creación de la orden por un error en el cobro
+          alert("La venta se creó, pero el cobro en el acto falló. La NV quedó impaga. Abrí una caja y registrá el cobro manualmente.");
         }
       }
 
@@ -417,9 +421,9 @@ export default function NewSaleModal({ saleChannels, orderStatuses, paymentStatu
       {/* Paga en el acto */}
       <div style={{ marginTop: "16px", borderTop: "2px solid #1a1a2e", paddingTop: "12px" }}>
         <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", padding: "10px 0" }}>
-          <input type="checkbox" checked={pagaEnElActo} onChange={e => { setPagaEnElActo(e.target.checked); if (e.target.checked) setMontoPagado(String(total)); }}
+          <input type="checkbox" checked={pagaEnElActo} disabled={!hasOpenCashSession} onChange={e => { setPagaEnElActo(e.target.checked); if (e.target.checked) setMontoPagado(String(total)); }}
             style={{ width: "18px", height: "18px" }} />
-          <span style={{ fontWeight: 700, fontSize: "14px" }}>💰 Paga en el acto (cobrar ahora)</span>
+          <span style={{ fontWeight: 700, fontSize: "14px", color: hasOpenCashSession ? "#111" : "#888" }}>💰 Paga en el acto (cobrar ahora{!hasOpenCashSession ? ' · abrí caja primero' : ''})</span>
         </label>
 
         {pagaEnElActo && (
