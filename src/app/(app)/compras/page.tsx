@@ -185,7 +185,9 @@ function NewNPModal({ onClose, onCreated }: { onClose: () => void; onCreated: ()
   const [iiSearch, setIiSearch] = useState("");
 
   const [provSearch, setProvSearch] = useState("");
-  const [providerAdvances, setProviderAdvances] = useState<{ id: number; amount: number; remaining: number; notes: string; created_at: string }[]>([]);
+  const [providerAdvances, setProviderAdvances] = useState<{ id: number; amount: number; remaining: number; notes: string; created_at: string; financial_account_id?: number | null }[]>([]);
+  const [selectedAdvanceId, setSelectedAdvanceId] = useState("");
+  const [advanceAmountToUse, setAdvanceAmountToUse] = useState("");
   const [showProviderDropdown, setShowProviderDropdown] = useState(false);
   const [showProductsDropdown, setShowProductsDropdown] = useState(false);
   const [showInputItemsDropdown, setShowInputItemsDropdown] = useState(false);
@@ -285,24 +287,26 @@ function NewNPModal({ onClose, onCreated }: { onClose: () => void; onCreated: ()
   }
 
   async function handleSave() {
-    if (items.length === 0) { alert("Agregá al menos un producto o insumo"); return; }
+    if (!form.provider_id) return alert("Seleccion? un proveedor");
+    if (items.length === 0) return alert("Agreg? al menos un item");
     setSaving(true);
     try {
-      const payload: any = {
-        provider_id: form.provider_id ? Number(form.provider_id) : undefined,
-        notes: form.notes || undefined,
-        delivery_fee: Number(form.delivery_fee) || 0,
-        discount_type: form.discount_type || undefined,
-        discount_value: form.discount_value ? Number(form.discount_value) : undefined,
-        items: items.map(i => ({ product_id: i.product_id, input_item_id: i.input_item_id, product_name: i.product_name, quantity: i.quantity, unit_price: i.unit_price })),
-      };
-      if (isPaid && paymentMethodId && paymentAmount) {
+      const payload: any = { provider_id: Number(form.provider_id), notes: form.notes, delivery_fee: Number(form.delivery_fee) || 0, discount_type: form.discount_type || null, discount_value: Number(form.discount_value) || 0, items };
+      if (isPaid && paymentMethodId && Number(paymentAmount) > 0) {
         payload.payment_method_id = Number(paymentMethodId);
         payload.payment_amount = Number(paymentAmount);
       }
-      await postJson("/purchase-orders", payload);
+      const purchaseOrder = await postJson<any>("/purchase-orders", payload);
+      if (isPaid && selectedAdvance && Number(advanceAmountToUse) > 0) {
+        await postJson(`/advances/${selectedAdvance.id}/use`, {
+          amount: Number(advanceAmountToUse),
+          purchase_order_id: purchaseOrder.id,
+          session_id: null,
+          notes: `Usa anticipo proveedor #${selectedAdvance.id}`,
+        });
+      }
       onCreated();
-    } catch (e: any) { alert("Error: " + (e?.response?.data?.error || e?.message || "No se pudo crear")); }
+    } catch (e) { alert("Error"); }
     finally { setSaving(false); }
   }
 
@@ -563,8 +567,12 @@ function NPDetailModal({ orderId, onClose, onUpdated }: any) {
 
   async function handleReceive() {
     if (!confirm("Marcar como Recibida e incrementar stock?")) return;
-    try { await postJson("/purchase-orders/" + orderId + "/receive", {}); onUpdated(); }
-    catch (e) { alert("Error"); }
+    try {
+      await postJson("/purchase-orders/" + orderId + "/receive", {});
+      onUpdated();
+    } catch (e) {
+      alert("Error");
+    }
   }
 
   const remaining = Number(order.total) - Number(order.payment_paid || 0);
@@ -572,107 +580,107 @@ function NPDetailModal({ orderId, onClose, onUpdated }: any) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }} onClick={e => e.target === e.currentTarget && onClose()}>
       <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "700px", maxHeight: "90vh", overflowY: "auto" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
-        <div>
-          <h2 style={{ margin: 0, fontSize: "20px", fontWeight: 800 }}>{order.order_number}</h2>
-          <div style={{ fontSize: "12px", color: "#888", marginTop: "2px" }}>
-            {order.provider_name || "Sin proveedor"}
-          </div>
-          <div style={{ fontSize: "12px", color: "#888" }}>
-            {new Date(order.created_at).toLocaleDateString("es-AR", { day: "2-digit", month: "long", year: "numeric" })}
-          </div>
-        </div>
-        <button onClick={onClose} style={{ background: "none", border: "none", fontSize: "20px", cursor: "pointer", padding: "4px 8px" }}>✕</button>
-      </div>
-
-      <div style={{ display: "flex", gap: "8px", marginBottom: "16px", flexWrap: "wrap" }}>
-        {order.status_name && <Badge color={order.status_color}>{order.status_name}</Badge>}
-        {order.payment_status_name && <Badge color={order.payment_status_color}>{order.payment_status_name}</Badge>}
-        <span style={{ padding: "6px 10px", borderRadius: "8px", background: "#f0f0f0", fontSize: "13px", color: "#666" }}>
-          📍 Compra
-        </span>
-        {order.status_name !== "Recibido" && (
-          <button onClick={handleReceive}
-            style={{ padding: "6px 14px", borderRadius: "8px", border: "none", background: "#1a1a2e", color: "#fff", cursor: "pointer", fontSize: "13px", fontWeight: 700 }}>
-            Marcar recibida
-          </button>
-        )}
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "8px", marginBottom: "16px" }}>
-        <div style={{ background: "#f8f8f8", borderRadius: "10px", padding: "10px", textAlign: "center" }}>
-          <div style={{ fontSize: "11px", color: "#888", marginBottom: "2px" }}>Subtotal</div>
-          <div style={{ fontWeight: 800, fontSize: "15px" }}>${Number(order.subtotal).toLocaleString("es-AR")}</div>
-        </div>
-        {Number(order.discount_value) > 0 && (
-          <div style={{ background: "#fde8e8", borderRadius: "10px", padding: "10px", textAlign: "center" }}>
-            <div style={{ fontSize: "11px", color: "#888", marginBottom: "2px" }}>Descuento</div>
-            <div style={{ fontWeight: 800, fontSize: "15px", color: "#e74c3c" }}>
-              -{order.discount_type === "percent" ? order.discount_value + "%" : "$" + Number(order.discount_value).toLocaleString("es-AR")}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: "20px", fontWeight: 800 }}>{order.order_number}</h2>
+            <div style={{ fontSize: "12px", color: "#888", marginTop: "2px" }}>
+              {order.provider_name || "Sin proveedor"}
+            </div>
+            <div style={{ fontSize: "12px", color: "#888" }}>
+              {new Date(order.created_at).toLocaleDateString("es-AR", { day: "2-digit", month: "long", year: "numeric" })}
             </div>
           </div>
-        )}
-        {Number(order.delivery_fee) > 0 && (
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: "20px", cursor: "pointer", padding: "4px 8px" }}>?</button>
+        </div>
+
+        <div style={{ display: "flex", gap: "8px", marginBottom: "16px", flexWrap: "wrap" }}>
+          {order.status_name && <Badge color={order.status_color}>{order.status_name}</Badge>}
+          {order.payment_status_name && <Badge color={order.payment_status_color}>{order.payment_status_name}</Badge>}
+          <span style={{ padding: "6px 10px", borderRadius: "8px", background: "#f0f0f0", fontSize: "13px", color: "#666" }}>
+            ?? Compra
+          </span>
+          {order.status_name !== "Recibido" && (
+            <button onClick={handleReceive}
+              style={{ padding: "6px 14px", borderRadius: "8px", border: "none", background: "#1a1a2e", color: "#fff", cursor: "pointer", fontSize: "13px", fontWeight: 700 }}>
+              Marcar Recibida
+            </button>
+          )}
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "8px", marginBottom: "16px" }}>
           <div style={{ background: "#f8f8f8", borderRadius: "10px", padding: "10px", textAlign: "center" }}>
-            <div style={{ fontSize: "11px", color: "#888", marginBottom: "2px" }}>Envío</div>
-            <div style={{ fontWeight: 800, fontSize: "15px" }}>${Number(order.delivery_fee).toLocaleString("es-AR")}</div>
+            <div style={{ fontSize: "11px", color: "#888", marginBottom: "2px" }}>Subtotal</div>
+            <div style={{ fontWeight: 800, fontSize: "15px" }}>${Number(order.subtotal).toLocaleString("es-AR")}</div>
+          </div>
+          {Number(order.discount_value) > 0 && (
+            <div style={{ background: "#fde8e8", borderRadius: "10px", padding: "10px", textAlign: "center" }}>
+              <div style={{ fontSize: "11px", color: "#888", marginBottom: "2px" }}>Descuento</div>
+              <div style={{ fontWeight: 800, fontSize: "15px", color: "#e74c3c" }}>
+                -{order.discount_type === "percent" ? order.discount_value + "%" : "$" + Number(order.discount_value).toLocaleString("es-AR")}
+              </div>
+            </div>
+          )}
+          {Number(order.delivery_fee) > 0 && (
+            <div style={{ background: "#f8f8f8", borderRadius: "10px", padding: "10px", textAlign: "center" }}>
+              <div style={{ fontSize: "11px", color: "#888", marginBottom: "2px" }}>Env?o</div>
+              <div style={{ fontWeight: 800, fontSize: "15px" }}>${Number(order.delivery_fee).toLocaleString("es-AR")}</div>
+            </div>
+          )}
+          <div style={{ background: "#1a1a2e", borderRadius: "10px", padding: "10px", textAlign: "center" }}>
+            <div style={{ fontSize: "11px", color: "#aaa", marginBottom: "2px" }}>Total</div>
+            <div style={{ fontWeight: 800, fontSize: "15px", color: "#fff" }}>${Number(order.total).toLocaleString("es-AR")}</div>
+          </div>
+        </div>
+
+        <div style={{ background: "#f8f8f8", borderRadius: "10px", padding: "12px", marginBottom: "16px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+            <span style={{ fontWeight: 700, fontSize: "13px" }}>?? Pagos</span>
+            <span style={{ fontSize: "12px", color: "#888" }}>{order.payments?.length || 0} imputado(s)</span>
+          </div>
+          {order.payments && order.payments.length > 0 ? (
+            <div>
+              {order.payments.map((p: any) => (
+                <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "1px solid #e0e0e0", fontSize: "13px" }}>
+                  <span>
+                    <b>${Number(p.amount).toLocaleString("es-AR")}</b>
+                    {p.account_name && <span style={{ color: "#888", marginLeft: "6px" }}>{p.account_name}</span>}
+                    <span style={{ color: "#aaa", fontSize: "11px", marginLeft: "6px" }}>
+                      {new Date(p.created_at).toLocaleDateString("es-AR")}
+                    </span>
+                    {p.notes && <span style={{ color: "#666", marginLeft: "6px" }}>? {p.notes}</span>}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : <div style={{ fontSize: "12px", color: "#999" }}>Sin pagos registrados</div>}
+
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px", fontSize: "13px", fontWeight: 700 }}>
+            <span>Pagado: <span style={{ color: "#27ae60" }}>${Number(order.payment_paid || 0).toLocaleString("es-AR")}</span></span>
+            {remaining > 0 && <span style={{ color: "#f39c12" }}>Pendiente: ${remaining.toLocaleString("es-AR")}</span>}
+            {remaining <= 0 && <span style={{ color: "#27ae60" }}>? Cancelado</span>}
+          </div>
+        </div>
+
+        <div style={{ marginBottom: "16px" }}>
+          <div style={{ fontWeight: 700, fontSize: "13px", marginBottom: "6px" }}>?? Items</div>
+          {order.items && order.items.length > 0 ? (
+            <div style={{ border: "1px solid #eee", borderRadius: "8px", overflow: "hidden" }}>
+              {order.items.map((item: any, idx: number) => (
+                <div key={idx} style={{ display: "flex", justifyContent: "space-between", padding: "8px 12px", borderBottom: idx < order.items.length - 1 ? "1px solid #f0" : "none", fontSize: "13px" }}>
+                  <span>{item.quantity} ? {item.product_name}</span>
+                  <span style={{ fontWeight: 700 }}>${Number(item.subtotal).toLocaleString("es-AR")}</span>
+                </div>
+              ))}
+            </div>
+          ) : <div style={{ fontSize: "12px", color: "#999" }}>Sin items</div>}
+        </div>
+
+        {order.notes && (
+          <div style={{ fontSize: "13px", color: "#666", fontStyle: "italic", padding: "8px 0", borderTop: "1px solid #eee" }}>
+            {order.notes}
           </div>
         )}
-        <div style={{ background: "#1a1a2e", borderRadius: "10px", padding: "10px", textAlign: "center" }}>
-          <div style={{ fontSize: "11px", color: "#aaa", marginBottom: "2px" }}>Total</div>
-          <div style={{ fontWeight: 800, fontSize: "15px", color: "#fff" }}>${Number(order.total).toLocaleString("es-AR")}</div>
-        </div>
       </div>
-
-      <div style={{ background: "#f8f8f8", borderRadius: "10px", padding: "12px", marginBottom: "16px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-          <span style={{ fontWeight: 700, fontSize: "13px" }}>💰 Pagos</span>
-          <span style={{ fontSize: "12px", color: "#888" }}>{order.payments?.length || 0} imputado(s)</span>
-        </div>
-        {order.payments && order.payments.length > 0 ? (
-          <div>
-            {order.payments.map((p: any) => (
-              <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "1px solid #e0e0e0", fontSize: "13px" }}>
-                <span>
-                  <b>${Number(p.amount).toLocaleString("es-AR")}</b>
-                  {p.account_name && <span style={{ color: "#888", marginLeft: "6px" }}>{p.account_name}</span>}
-                  <span style={{ color: "#aaa", fontSize: "11px", marginLeft: "6px" }}>
-                    {new Date(p.created_at).toLocaleDateString("es-AR")}
-                  </span>
-                  {p.notes && <span style={{ color: "#666", marginLeft: "6px" }}>· {p.notes}</span>}
-                </span>
-              </div>
-            ))}
-          </div>
-        ) : <div style={{ fontSize: "12px", color: "#999" }}>Sin pagos registrados</div>}
-
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px", fontSize: "13px", fontWeight: 700 }}>
-          <span>Pagado: <span style={{ color: "#27ae60" }}>${Number(order.payment_paid || 0).toLocaleString("es-AR")}</span></span>
-          {remaining > 0 && <span style={{ color: "#f39c12" }}>Pendiente: ${remaining.toLocaleString("es-AR")}</span>}
-          {remaining <= 0 && <span style={{ color: "#27ae60" }}>✓ Cancelado</span>}
-        </div>
-      </div>
-
-      <div style={{ marginBottom: "16px" }}>
-        <div style={{ fontWeight: 700, fontSize: "13px", marginBottom: "6px" }}>📦 Items</div>
-        {order.items && order.items.length > 0 ? (
-          <div style={{ border: "1px solid #eee", borderRadius: "8px", overflow: "hidden" }}>
-            {order.items.map((item: any, idx: number) => (
-              <div key={idx} style={{ display: "flex", justifyContent: "space-between", padding: "8px 12px", borderBottom: idx < order.items.length - 1 ? "1px solid #f0" : "none", fontSize: "13px" }}>
-                <span>{item.quantity} × {item.product_name}</span>
-                <span style={{ fontWeight: 700 }}>${Number(item.subtotal).toLocaleString("es-AR")}</span>
-              </div>
-            ))}
-          </div>
-        ) : <div style={{ fontSize: "12px", color: "#999" }}>Sin items</div>}
-      </div>
-
-      {order.notes && (
-        <div style={{ fontSize: "13px", color: "#666", fontStyle: "italic", padding: "8px 0", borderTop: "1px solid #eee" }}>
-          {order.notes}
-        </div>
-      )}
-    </div>
     </div>
   );
 }

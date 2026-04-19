@@ -83,9 +83,19 @@ export default function PagosPage() {
   );
 
   async function handleRegisterMovement() {
-    if (!movForm.financial_account_id || !movForm.amount) { alert("Completá cuenta y monto"); return; }
+    if (!movForm.financial_account_id || !movForm.amount) { alert("Complet? cuenta y monto"); return; }
     setSaving(true);
     try {
+      if (movForm.reason === "advance") {
+        if (!movForm.supplier_id) { alert("Seleccion? un proveedor"); setSaving(false); return; }
+        await postJson("/advances", {
+          entity_type: "provider",
+          entity_id: Number(movForm.supplier_id),
+          amount: Number(movForm.amount),
+          notes: movForm.notes || undefined,
+          financial_account_id: Number(movForm.financial_account_id),
+        });
+      }
       await postJson("/cash-movements", {
         session_id: null,
         financial_account_id: Number(movForm.financial_account_id),

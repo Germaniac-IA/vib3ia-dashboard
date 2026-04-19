@@ -42,6 +42,12 @@ const NAV_STRUCTURE: NavSection[] = [
       { label: "Compras", icon: "📥", href: "/compras" },
     ],
   },
+  {
+    title: "OTROS",
+    items: [
+      { label: "Anticipos", icon: "??", href: "/anticipos" },
+    ],
+  },
 ];
 
 export default function Sidebar({
