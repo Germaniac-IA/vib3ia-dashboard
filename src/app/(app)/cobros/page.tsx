@@ -253,6 +253,7 @@ export default function CobrosPage() {
               <div>
                 <label style={{ fontSize: "12px", fontWeight: 700, color: "#666" }}>Motivo</label>
                 <select value={movForm.reason} onChange={e => { setMov("reason", e.target.value); setSelectedNv(null); setSelectedContact(null); setMovForm(prev => ({ ...prev, order_id: "", client_id: "", amount: "" })); }} style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }}>
+                  <option value="">Seleccionar motivo...</option>
                   <option value="nv_payment">Cobro de NV</option>
                   <option value="advance">Anticipo de cliente</option>
                   <option value="other_in">Otro ingreso</option>
