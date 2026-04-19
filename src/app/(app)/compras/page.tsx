@@ -134,7 +134,7 @@ export default function ComprasPage() {
                     {o.provider_name && <span style={{ fontSize: "12px", color: "#888" }}>{o.provider_name}</span>}
                   </div>
                   <div style={{ fontSize: "12px", color: "#888" }}>{new Date(o.created_at).toLocaleDateString("es-AR")}</div>
-                  <div style={{ fontSize: "17px", fontWeight: 800, color: "#1a1a2e", marginTop: "4px" }}>${Number(o.total).toLocaleString("es-AR")}</div>
+                  <div style={{ fontSize: "17px", fontWeight: 800, color: "#1a1a2e", marginTop: "4px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>${Number(o.total).toLocaleString("es-AR")}{o.payment_paid != null && Number(o.payment_paid) < Number(o.total) && <span style={{ fontSize: "12px", fontWeight: 400, color: "#f39c12" }}> - ${Number(o.payment_paid).toLocaleString("es-AR")} pagado<span style={{ fontWeight: 400, color: "#e74c3c" }}> (resta ${Number(o.total - o.payment_paid).toLocaleString("es-AR")})</span></span>}{o.payment_paid != null && Number(o.payment_paid) >= Number(o.total) && <span style={{ fontSize: "12px", fontWeight: 400, color: "#27ae60" }}> - Cancelado</span>}</div>
                   <div style={{ display: "flex", gap: "6px", marginTop: "6px", flexWrap: "wrap" }}>
                     {o.status_name && <Badge color={o.status_color || "#888"}>{o.status_name}</Badge>}
                     {o.payment_status_name && <Badge color={o.payment_status_color || "#888"}>{o.payment_status_name}</Badge>}
@@ -142,9 +142,9 @@ export default function ComprasPage() {
                   {o.items?.length > 0 && (
                     <div style={{ marginTop: "8px", fontSize: "12px", color: "#666", display: "flex", flexDirection: "column", gap: "3px" }}>
                       {o.items.slice(0, 3).map((item: any, idx: number) => (
-                        <div key={idx}>• {Number(item.quantity)} × {item.product_name}</div>
+                        <div key={idx}>x {Number(item.quantity)} x {item.product_name}</div>
                       ))}
-                      {o.items.length > 3 && <div style={{ color: "#999" }}>+ {o.items.length - 3} ítems más</div>}
+                      {o.items.length > 3 && <div style={{ color: "#999" }}>+ {o.items.length - 3} items mas</div>}
                     </div>
                   )}
                 </div>
@@ -242,6 +242,7 @@ function NewNPModal({ onClose, onCreated }: { onClose: () => void; onCreated: ()
   if (form.discount_type === "percent" && Number(form.discount_value)) disc = subtotal * (Number(form.discount_value) / 100);
   else if (form.discount_type === "fixed") disc = Number(form.discount_value);
   const total = Math.max(0, subtotal - disc + Number(form.delivery_fee || 0));
+  const selectedAdvance = providerAdvances.find(a => String(a.id) === selectedAdvanceId) || null;
 
   useEffect(() => {
     if (form.provider_id) {
@@ -512,9 +513,41 @@ function NewNPModal({ onClose, onCreated }: { onClose: () => void; onCreated: ()
             <span style={{ fontWeight: 700, fontSize: "14px", color: isPaid ? "#27ae60" : "#666" }}>✅ Pagado en el acto</span>
           </label>
           {isPaid && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginTop: "10px" }}>
-              <FieldSelect label="Método de pago" value={paymentMethodId} onChange={setPaymentMethodId} options={paymentMethods} />
-              <FieldInput label="Monto pagado" value={paymentAmount} onChange={setPaymentAmount} placeholder="0.00" type="number" />
+            <div style={{ marginTop: "10px", display: "grid", gap: "8px" }}>
+              {form.provider_id && providerAdvances.length > 0 && (
+                <>
+                  <select value={selectedAdvanceId} onChange={e => {
+                    const adv = providerAdvances.find(a => String(a.id) === e.target.value) || null;
+                    setSelectedAdvanceId(e.target.value);
+                    if (adv) {
+                      const used = Math.min(Number(adv.remaining || 0), Number(total));
+                      setAdvanceAmountToUse(String(used));
+                      if (adv.financial_account_id) setPaymentMethodId(String(adv.financial_account_id));
+                      setPaymentAmount(String(Math.max(0, Number(total) - used)));
+                    } else {
+                      setAdvanceAmountToUse("");
+                    }
+                  }} style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }}>
+                    <option value="">Usar anticipo</option>
+                    {providerAdvances.map(a => <option key={a.id} value={a.id}>#{a.id} ? Disponible ${Number(a.remaining || 0).toLocaleString("es-AR")}</option>)}
+                  </select>
+                  {selectedAdvance && (
+                    <input type="number" value={advanceAmountToUse} min={0} max={selectedAdvance.remaining} onChange={e => {
+                      const val = e.target.value;
+                      setAdvanceAmountToUse(val);
+                      setPaymentAmount(String(Math.max(0, Number(total) - Math.min(Number(val || 0), Number(total)))));
+                    }} placeholder="Monto de anticipo a usar" style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
+                  )}
+                </>
+              )}
+              {selectedAdvance && Number(advanceAmountToUse || 0) > 0 && (
+                <div style={{ fontSize: "12px", color: "#666" }}>Usando anticipo: <b style={{ color: "#e67e22" }}>${Number(advanceAmountToUse).toLocaleString("es-AR")}</b></div>
+              )}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                <FieldSelect label="Cuenta para saldo" value={paymentMethodId} onChange={setPaymentMethodId} options={paymentMethods} />
+                <FieldInput label="Saldo a pagar ahora" value={paymentAmount} onChange={setPaymentAmount} placeholder="0.00" type="number" />
+              </div>
+              <div style={{ fontSize: "11px", color: "#888" }}>Si el anticipo cubre todo o quer?s dejar saldo pendiente, pod?s dejar el saldo en 0.</div>
             </div>
           )}
         </div>
