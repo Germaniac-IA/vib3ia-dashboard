@@ -81,7 +81,7 @@ export default function NewSaleModal({ saleChannels, orderStatuses, paymentStatu
   // Load advances when contact selected
   useEffect(() => {
     if (selectedContact) {
-      fetchJson<any[]>("/client-advances?client_id=" + selectedContact.id)
+      fetchJson<any[]>("/advances?entity_type=client&entity_id=" + selectedContact.id)
         .then(setClienteAdvances)
         .catch(console.error);
       // Auto-fill montoPagado with total
@@ -186,7 +186,7 @@ export default function NewSaleModal({ saleChannels, orderStatuses, paymentStatu
 
           // Si se usó anticipo, registrar el uso
           if (advanceSeleccionado && advanceMontoUsar && Number(advanceMontoUsar) > 0) {
-            await postJson(`/client-advances/${advanceSeleccionado.id}/use`, {
+            await postJson(`/advances/${advanceSeleccionado.id}/use`, {
               amount: Number(advanceMontoUsar),
             });
           }

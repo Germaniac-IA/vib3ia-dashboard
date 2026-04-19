@@ -120,7 +120,7 @@ export default function ComprasPage() {
           <option value="">Estado pago: Todos</option>
           {pst.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
         </select>
-        <button onClick={() => setShowNew(true)} style={{ padding: "8px 16px", borderRadius: "8px", border: "none", background: "#27ae60", color: "#fff", cursor: "pointer", fontSize: "13px", fontWeight: 700 }}>➕ Nueva NP</button>
+        <button onClick={() => setShowNew(true)} style={{ padding: "8px 16px", borderRadius: "8px", border: "none", background: "#27ae60", color: "#fff", cursor: "pointer", fontSize: "13px", fontWeight: 700 }}>➕ Nueva Compra</button>
       </div>
 
       {loading ? <Loading /> : filtered.length === 0 ? <Empty message="Sin notas de pedido" /> : (
@@ -185,6 +185,10 @@ function NewNPModal({ onClose, onCreated }: { onClose: () => void; onCreated: ()
   const [iiSearch, setIiSearch] = useState("");
 
   const [provSearch, setProvSearch] = useState("");
+  const [providerAdvances, setProviderAdvances] = useState<{ id: number; amount: number; remaining: number; notes: string; created_at: string }[]>([]);
+  const [showProviderDropdown, setShowProviderDropdown] = useState(false);
+  const [showProductsDropdown, setShowProductsDropdown] = useState(false);
+  const [showInputItemsDropdown, setShowInputItemsDropdown] = useState(false);
   const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState<"products" | "insumos">("products");
 
@@ -227,14 +231,25 @@ function NewNPModal({ onClose, onCreated }: { onClose: () => void; onCreated: ()
 
   const productQuery = pSearch.trim().toLowerCase();
   const inputQuery = iiSearch.trim().toLowerCase();
-  const fp = productQuery ? products.filter(p => p.name.toLowerCase().includes(productQuery)) : [];
-  const fi = inputQuery ? inputItems.filter(i => i.name.toLowerCase().includes(inputQuery)) : [];
+  const fp = products.filter(p => !productQuery || p.name.toLowerCase().includes(productQuery));
+  const fi = inputItems.filter(i => !inputQuery || i.name.toLowerCase().includes(inputQuery));
+  const filteredProviders = providers.filter(p => !provSearch.trim() || p.name.toLowerCase().includes(provSearch.toLowerCase()) || p.business_name?.toLowerCase().includes(provSearch.toLowerCase()));
 
   const subtotal = items.reduce((s, i) => s + i.quantity * i.unit_price, 0);
   let disc = 0;
   if (form.discount_type === "percent" && Number(form.discount_value)) disc = subtotal * (Number(form.discount_value) / 100);
   else if (form.discount_type === "fixed") disc = Number(form.discount_value);
   const total = Math.max(0, subtotal - disc + Number(form.delivery_fee || 0));
+
+  useEffect(() => {
+    if (form.provider_id) {
+      fetchJson<any[]>("/advances?entity_type=provider&entity_id=" + form.provider_id)
+        .then(setProviderAdvances)
+        .catch(() => setProviderAdvances([]));
+    } else {
+      setProviderAdvances([]);
+    }
+  }, [form.provider_id]);
 
   async function saveProvider() {
     if (!newProvider.name) { alert("El nombre es obligatorio"); return; }
@@ -294,7 +309,7 @@ function NewNPModal({ onClose, onCreated }: { onClose: () => void; onCreated: ()
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }} onClick={e => e.target === e.currentTarget && onClose()}>
       <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "600px", maxHeight: "90vh", overflowY: "auto" }}>
-        <h2 style={{ margin: "0 0 16px", fontSize: "18px", fontWeight: 800 }}>📥 Nueva Nota de Pedido</h2>
+        <h2 style={{ margin: "0 0 16px", fontSize: "18px", fontWeight: 800 }}>📥 Nueva Compra</h2>
 
         {/* Proveedor */}
         {!showNewProvider ? (
@@ -303,13 +318,34 @@ function NewNPModal({ onClose, onCreated }: { onClose: () => void; onCreated: ()
               <label style={{ fontSize: "12px", fontWeight: 700, color: "#666" }}>Proveedor</label>
               <button onClick={() => setShowNewProvider(true)} style={{ fontSize: "11px", background: "none", border: "1px solid #27ae60", color: "#27ae60", padding: "2px 8px", borderRadius: "4px", cursor: "pointer" }}>➕ Nuevo</button>
             </div>
-            <input value={provSearch} onChange={e => { setProvSearch(e.target.value); loadProviders(e.target.value); }} onFocus={() => { setProvSearch(e.target.value); loadProviders(e.target.value); }} placeholder="Buscar proveedor..." style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
-            {providers.length > 0 && providers.map(p => (
-              <div key={p.id} onClick={() => { setF("provider_id", String(p.id)); setProvSearch(p.name); setProviders([]); }} style={{ padding: "8px 12px", borderBottom: "1px solid #f0", cursor: "pointer", fontSize: "13px" }}>
-                <b>{p.name}</b> {p.business_name && <span style={{ color: "#888" }}>· {p.business_name}</span>}
-                {p.tax_id && <span style={{ color: "#888", fontSize: "11px" }}> · CUIT: {p.tax_id}</span>}
+            <div style={{ position: "relative" }}>
+              <div style={{ display: "flex", gap: "6px" }}>
+                <input value={provSearch} onChange={e => { setProvSearch(e.target.value); setShowProviderDropdown(true); loadProviders(e.target.value); }} onFocus={() => { setShowProviderDropdown(true); if (!providers.length) loadProviders(""); }} placeholder="Buscar proveedor..." style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }} />
+                <button onClick={() => { const next = !showProviderDropdown; setShowProviderDropdown(next); if (next && !providers.length) loadProviders(""); }} title="Ver todos los proveedores" style={{ padding: "8px 10px", borderRadius: "8px", border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontSize: "14px" }}>
+                  🔍
+                </button>
               </div>
-            ))}
+              {showProviderDropdown && (
+                <div style={{ position: "absolute", top: "100%", left: 0, right: 0, border: "1px solid #ddd", borderRadius: "8px", marginTop: "4px", maxHeight: "200px", overflowY: "auto", background: "#fff", zIndex: 20, boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+                  {filteredProviders.length > 0 ? filteredProviders.slice(0, 15).map(p => (
+                    <div key={p.id} onClick={() => { setF("provider_id", String(p.id)); setProvSearch(p.name); setShowProviderDropdown(false); }} style={{ padding: "10px 14px", borderBottom: "1px solid #f0", cursor: "pointer", fontSize: "13px", display: "flex", justifyContent: "space-between" }} onMouseEnter={e => (e.currentTarget.style.background = "#f5f5f5")} onMouseLeave={e => (e.currentTarget.style.background = "none")}>
+                      <span><b>{p.name}</b>{p.business_name && <span style={{ color: "#888", marginLeft: "6px" }}>· {p.business_name}</span>}</span>
+                      <span style={{ color: "#888" }}>{p.tax_id || ""}</span>
+                    </div>
+                  )) : (
+                    <div style={{ padding: "12px", color: "#999", fontSize: "12px", textAlign: "center" }}>No se encontraron proveedores</div>
+                  )}
+                </div>
+              )}
+              {!!form.provider_id && (() => {
+                const totalRemaining = providerAdvances.reduce((s, a) => s + Number(a.remaining || 0), 0);
+                return totalRemaining > 0 ? (
+                  <div style={{ marginTop: "8px", display: "inline-flex", fontSize: "11px", background: "#6c63ff", color: "#fff", padding: "2px 8px", borderRadius: "4px", fontWeight: 700 }}>
+                    💳 {totalRemaining.toLocaleString("es-AR")} anticipo
+                  </div>
+                ) : null;
+              })()}
+            </div>
           </div>
         ) : (
           <div style={{ marginBottom: "12px", padding: "12px", background: "#f8fff8", borderRadius: "8px", border: "1px solid #27ae60" }}>
@@ -341,26 +377,32 @@ function NewNPModal({ onClose, onCreated }: { onClose: () => void; onCreated: ()
               <label style={{ fontSize: "12px", fontWeight: 700, color: "#666" }}>Productos</label>
               <button onClick={() => setShowNewProduct(true)} style={{ fontSize: "11px", background: "none", border: "1px solid #27ae60", color: "#27ae60", padding: "2px 8px", borderRadius: "4px", cursor: "pointer" }}>➕ Nuevo</button>
             </div>
-            <input
-              value={pSearch}
-              onChange={e => { setPSearch(e.target.value); setShowProductsDropdown(true); }}
-              onFocus={() => { setShowProductsDropdown(true); if (products.length === 0) fetchJson<Product[]>("/products").then(setProducts).catch(() => {}); }}
-              onBlur={() => setTimeout(() => setShowProductsDropdown(false), 200)}
-              placeholder={`Buscar entre ${products.length} productos...`}
-              style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }}
-            />
-            {!productQuery ? (
-              <div style={{ padding: "8px 12px", color: "#888", fontSize: "12px" }}>Empezá a escribir para buscar productos</div>
-            ) : fp.length > 0 ? (
-              fp.slice(0, 6).map(p => (
-                <div key={p.id} onClick={() => { addItem(p, "product"); setPSearch(""); }} style={{ padding: "8px 12px", borderBottom: "1px solid #f0", cursor: "pointer", display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
-                  <span>{p.name}</span>
-                  <span style={{ fontWeight: 700, color: "#888" }}>${Number(p.price).toLocaleString("es-AR")}</span>
+            <div style={{ position: "relative" }}>
+              <div style={{ display: "flex", gap: "6px" }}>
+                <input
+                  value={pSearch}
+                  onChange={e => { setPSearch(e.target.value); setShowProductsDropdown(true); }}
+                  onFocus={() => setShowProductsDropdown(true)}
+                  placeholder={`Buscar entre ${products.length} productos...`}
+                  style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }}
+                />
+                <button onClick={() => setShowProductsDropdown(!showProductsDropdown)} title="Ver todos los productos" style={{ padding: "8px 10px", borderRadius: "8px", border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontSize: "14px" }}>
+                  🔍
+                </button>
+              </div>
+              {showProductsDropdown && (
+                <div style={{ position: "absolute", top: "100%", left: 0, right: 0, border: "1px solid #ddd", borderRadius: "8px", marginTop: "4px", maxHeight: "200px", overflowY: "auto", background: "#fff", zIndex: 20, boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+                  {fp.length > 0 ? fp.slice(0, 15).map(p => (
+                    <div key={p.id} onClick={() => { addItem(p, "product"); setPSearch(""); setShowProductsDropdown(false); }} style={{ padding: "10px 14px", borderBottom: "1px solid #f0", cursor: "pointer", display: "flex", justifyContent: "space-between", fontSize: "13px" }} onMouseEnter={e => (e.currentTarget.style.background = "#f5f5f5")} onMouseLeave={e => (e.currentTarget.style.background = "none")}>
+                      <span>{p.name}</span>
+                      <span style={{ fontWeight: 700, color: "#888" }}>${Number(p.price).toLocaleString("es-AR")}</span>
+                    </div>
+                  )) : (
+                    <div style={{ padding: "12px", color: "#999", fontSize: "12px", textAlign: "center" }}>No se encontraron productos</div>
+                  )}
                 </div>
-              ))
-            ) : (
-              <div style={{ padding: "8px 12px", color: "#888", fontSize: "12px" }}>No se encontraron productos</div>
-            )}
+              )}
+            </div>
           </div>
         )}
 
@@ -384,26 +426,32 @@ function NewNPModal({ onClose, onCreated }: { onClose: () => void; onCreated: ()
               <label style={{ fontSize: "12px", fontWeight: 700, color: "#666" }}>Insumos</label>
               <button onClick={() => setShowNewInsumo(true)} style={{ fontSize: "11px", background: "none", border: "1px solid #27ae60", color: "#27ae60", padding: "2px 8px", borderRadius: "4px", cursor: "pointer" }}>➕ Nuevo</button>
             </div>
-            <input
-              value={iiSearch}
-              onChange={e => { setIiSearch(e.target.value); setShowInputItemsDropdown(true); }}
-              onFocus={() => { setShowInputItemsDropdown(true); if (inputItems.length === 0) fetchJson<InputItem[]>("/input-items").then(setInputItems).catch(() => {}); }}
-              onBlur={() => setTimeout(() => setShowInputItemsDropdown(false), 200)}
-              placeholder={`Buscar entre ${inputItems.length} insumos...`}
-              style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }}
-            />
-            {!inputQuery ? (
-              <div style={{ padding: "8px 12px", color: "#888", fontSize: "12px" }}>Empezá a escribir para buscar insumos</div>
-            ) : fi.length > 0 ? (
-              fi.slice(0, 6).map(i => (
-                <div key={i.id} onClick={() => { addItem(i, "input_item"); setIiSearch(""); }} style={{ padding: "8px 12px", borderBottom: "1px solid #f0", cursor: "pointer", display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
-                  <span>{i.name} <span style={{ fontSize: "11px", color: "#888" }}>({i.unit})</span></span>
-                  <span style={{ fontWeight: 700, color: "#888" }}>${Number(i.default_cost).toLocaleString("es-AR")}</span>
+            <div style={{ position: "relative" }}>
+              <div style={{ display: "flex", gap: "6px" }}>
+                <input
+                  value={iiSearch}
+                  onChange={e => { setIiSearch(e.target.value); setShowInputItemsDropdown(true); }}
+                  onFocus={() => setShowInputItemsDropdown(true)}
+                  placeholder={`Buscar entre ${inputItems.length} insumos...`}
+                  style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px" }}
+                />
+                <button onClick={() => setShowInputItemsDropdown(!showInputItemsDropdown)} title="Ver todos los insumos" style={{ padding: "8px 10px", borderRadius: "8px", border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontSize: "14px" }}>
+                  🔍
+                </button>
+              </div>
+              {showInputItemsDropdown && (
+                <div style={{ position: "absolute", top: "100%", left: 0, right: 0, border: "1px solid #ddd", borderRadius: "8px", marginTop: "4px", maxHeight: "200px", overflowY: "auto", background: "#fff", zIndex: 20, boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+                  {fi.length > 0 ? fi.slice(0, 15).map(i => (
+                    <div key={i.id} onClick={() => { addItem(i, "input_item"); setIiSearch(""); setShowInputItemsDropdown(false); }} style={{ padding: "10px 14px", borderBottom: "1px solid #f0", cursor: "pointer", display: "flex", justifyContent: "space-between", fontSize: "13px" }} onMouseEnter={e => (e.currentTarget.style.background = "#f5f5f5")} onMouseLeave={e => (e.currentTarget.style.background = "none")}>
+                      <span>{i.name} <span style={{ fontSize: "11px", color: "#888" }}>({i.unit})</span></span>
+                      <span style={{ fontWeight: 700, color: "#888" }}>${Number(i.default_cost).toLocaleString("es-AR")}</span>
+                    </div>
+                  )) : (
+                    <div style={{ padding: "12px", color: "#999", fontSize: "12px", textAlign: "center" }}>No se encontraron insumos</div>
+                  )}
                 </div>
-              ))
-            ) : (
-              <div style={{ padding: "8px 12px", color: "#888", fontSize: "12px" }}>No se encontraron insumos</div>
-            )}
+              )}
+            </div>
           </div>
         )}
 
@@ -477,7 +525,7 @@ function NewNPModal({ onClose, onCreated }: { onClose: () => void; onCreated: ()
         {/* Actions */}
         <div style={{ display: "flex", gap: "8px" }}>
           <button onClick={onClose} style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "1px solid #ddd", background: "#fff", cursor: "pointer" }}>Cancelar</button>
-          <button onClick={handleSave} disabled={saving} style={{ flex: 2, padding: "10px", borderRadius: "8px", border: "none", background: "#27ae60", color: "#fff", cursor: saving ? "not-allowed" : "pointer", fontWeight: 700, opacity: saving ? 0.7 : 1 }}>{saving ? "Guardando..." : "✅ Crear NP"}</button>
+          <button onClick={handleSave} disabled={saving} style={{ flex: 2, padding: "10px", borderRadius: "8px", border: "none", background: "#27ae60", color: "#fff", cursor: saving ? "not-allowed" : "pointer", fontWeight: 700, opacity: saving ? 0.7 : 1 }}>{saving ? "Guardando..." : "✅ Crear Compra"}</button>
         </div>
       </div>
     </div>
@@ -487,17 +535,27 @@ function NewNPModal({ onClose, onCreated }: { onClose: () => void; onCreated: ()
 function NPDetailModal({ orderId, onClose, onUpdated }: any) {
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    fetchJson("/purchase-orders/" + orderId).then(setOrder).catch(console.error).finally(() => setLoading(false));
+    fetchJson("/purchase-orders/" + orderId)
+      .then(setOrder)
+      .catch(() => setError("No se pudo cargar la compra"))
+      .finally(() => setLoading(false));
   }, [orderId]);
 
   if (loading) return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
-      <div style={{ background: "#fff", borderRadius: "16px", padding: "40px", textAlign: "center" }}><Loading /></div>
+    <div style={{ background: "#fff", borderRadius: "16px", padding: "40px", textAlign: "center", width: "100%", maxWidth: "600px" }}>
+      <Loading />
     </div>
   );
-  if (!order) return null;
+
+  if (error || !order) return (
+    <div style={{ background: "#fff", borderRadius: "16px", padding: "40px", textAlign: "center", width: "100%", maxWidth: "600px" }}>
+      <p style={{ color: "#e74c3c" }}>{error || "No se pudo cargar la compra"}</p>
+      <button onClick={onClose} style={{ padding: "8px 20px", borderRadius: "8px", border: "none", background: "#333", color: "#fff", cursor: "pointer" }}>Cerrar</button>
+    </div>
+  );
 
   async function handleReceive() {
     if (!confirm("Marcar como Recibida e incrementar stock?")) return;
@@ -505,48 +563,110 @@ function NPDetailModal({ orderId, onClose, onUpdated }: any) {
     catch (e) { alert("Error"); }
   }
 
+  const remaining = Number(order.total) - Number(order.payment_paid || 0);
+
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }} onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "560px", maxHeight: "90vh", overflowY: "auto" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-          <div>
-            <h2 style={{ margin: 0, fontSize: "20px", fontWeight: 800 }}>{order.order_number}</h2>
-            <div style={{ fontSize: "12px", color: "#888" }}>{order.provider_name || "Sin proveedor"} · {new Date(order.created_at).toLocaleDateString("es-AR")}</div>
+    <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "700px", maxHeight: "90vh", overflowY: "auto" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: "20px", fontWeight: 800 }}>{order.order_number}</h2>
+          <div style={{ fontSize: "12px", color: "#888", marginTop: "2px" }}>
+            {order.provider_name || "Sin proveedor"}
           </div>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: "20px", cursor: "pointer" }}>✕</button>
-        </div>
-        <div style={{ display: "flex", gap: "8px", marginBottom: "12px", flexWrap: "wrap" }}>
-          {order.status_name && <Badge color={order.status_color}>{order.status_name}</Badge>}
-          {order.payment_status_name && <Badge color={order.payment_status_color}>{order.payment_status_name}</Badge>}
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "8px", marginBottom: "12px" }}>
-          <div style={{ background: "#f8f8f8", borderRadius: "8px", padding: "10px", textAlign: "center" }}><div style={{ fontSize: "11px", color: "#888" }}>Subtotal</div><div style={{ fontWeight: 800 }}>${Number(order.subtotal).toLocaleString("es-AR")}</div></div>
-          {Number(order.discount_value) > 0 && <div style={{ background: "#fde8e8", borderRadius: "8px", padding: "10px", textAlign: "center" }}><div style={{ fontSize: "11px", color: "#888" }}>Descuento</div><div style={{ fontWeight: 800, color: "#e74c3c" }}>-${Number(order.discount_value).toLocaleString("es-AR")}</div></div>}
-          <div style={{ background: "#1a1a2e", borderRadius: "8px", padding: "10px", textAlign: "center", color: "#fff" }}><div style={{ fontSize: "11px", color: "#aaa" }}>Total</div><div style={{ fontWeight: 800 }}>${Number(order.total).toLocaleString("es-AR")}</div></div>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "8px", marginBottom: "12px" }}>
-          <div style={{ background: "#eef9f0", borderRadius: "8px", padding: "10px", textAlign: "center" }}><div style={{ fontSize: "11px", color: "#888" }}>Pagado</div><div style={{ fontWeight: 800, color: "#27ae60" }}>${Number(order.payment_paid || 0).toLocaleString("es-AR")}</div></div>
-          <div style={{ background: "#fff3f1", borderRadius: "8px", padding: "10px", textAlign: "center" }}><div style={{ fontSize: "11px", color: "#888" }}>Pendiente</div><div style={{ fontWeight: 800, color: "#e74c3c" }}>${Number(order.payment_pending || 0).toLocaleString("es-AR")}</div></div>
-        </div>
-        <div style={{ fontWeight: 700, fontSize: "13px", marginBottom: "6px" }}>Items comprados</div>
-        {order.items?.map((item: any, idx: number) => (
-          <div key={idx} style={{ display: "flex", justifyContent: "space-between", padding: "8px", borderBottom: "1px solid #f0", fontSize: "13px" }}>
-            <span>{item.quantity} × {item.product_name}</span>
-            <span style={{ fontWeight: 700 }}>${Number(item.subtotal).toLocaleString("es-AR")}</span>
+          <div style={{ fontSize: "12px", color: "#888" }}>
+            {new Date(order.created_at).toLocaleDateString("es-AR", { day: "2-digit", month: "long", year: "numeric" })}
           </div>
-        ))}
-        <div style={{ fontWeight: 700, fontSize: "13px", margin: "14px 0 6px" }}>Pagos imputados</div>
-        {order.payments?.length ? order.payments.map((payment: any) => (
-          <div key={payment.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px", borderBottom: "1px solid #f0", fontSize: "13px" }}>
-            <span>{new Date(payment.created_at).toLocaleDateString("es-AR")} · {payment.account_name || "Sin cuenta"}{payment.notes ? ` · ${payment.notes}` : ""}</span>
-            <span style={{ fontWeight: 700, color: "#27ae60" }}>${Number(payment.amount).toLocaleString("es-AR")}</span>
-          </div>
-        )) : <div style={{ fontSize: "12px", color: "#888", padding: "8px 0" }}>Sin pagos imputados</div>}
-        {order.notes && <div style={{ fontSize: "12px", color: "#888", fontStyle: "italic", marginTop: "8px" }}>{order.notes}</div>}
+        </div>
+        <button onClick={onClose} style={{ background: "none", border: "none", fontSize: "20px", cursor: "pointer", padding: "4px 8px" }}>✕</button>
+      </div>
+
+      <div style={{ display: "flex", gap: "8px", marginBottom: "16px", flexWrap: "wrap" }}>
+        {order.status_name && <Badge color={order.status_color}>{order.status_name}</Badge>}
+        {order.payment_status_name && <Badge color={order.payment_status_color}>{order.payment_status_name}</Badge>}
+        <span style={{ padding: "6px 10px", borderRadius: "8px", background: "#f0f0f0", fontSize: "13px", color: "#666" }}>
+          📍 Compra
+        </span>
         {order.status_name !== "Recibido" && (
-          <button onClick={handleReceive} style={{ marginTop: "12px", width: "100%", padding: "10px", borderRadius: "8px", border: "none", background: "#27ae60", color: "#fff", cursor: "pointer", fontWeight: 700 }}>✅ Marcar como Recibida (+stock)</button>
+          <button onClick={handleReceive}
+            style={{ padding: "6px 14px", borderRadius: "8px", border: "none", background: "#1a1a2e", color: "#fff", cursor: "pointer", fontSize: "13px", fontWeight: 700 }}>
+            Marcar recibida
+          </button>
         )}
       </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "8px", marginBottom: "16px" }}>
+        <div style={{ background: "#f8f8f8", borderRadius: "10px", padding: "10px", textAlign: "center" }}>
+          <div style={{ fontSize: "11px", color: "#888", marginBottom: "2px" }}>Subtotal</div>
+          <div style={{ fontWeight: 800, fontSize: "15px" }}>${Number(order.subtotal).toLocaleString("es-AR")}</div>
+        </div>
+        {Number(order.discount_value) > 0 && (
+          <div style={{ background: "#fde8e8", borderRadius: "10px", padding: "10px", textAlign: "center" }}>
+            <div style={{ fontSize: "11px", color: "#888", marginBottom: "2px" }}>Descuento</div>
+            <div style={{ fontWeight: 800, fontSize: "15px", color: "#e74c3c" }}>
+              -{order.discount_type === "percent" ? order.discount_value + "%" : "$" + Number(order.discount_value).toLocaleString("es-AR")}
+            </div>
+          </div>
+        )}
+        {Number(order.delivery_fee) > 0 && (
+          <div style={{ background: "#f8f8f8", borderRadius: "10px", padding: "10px", textAlign: "center" }}>
+            <div style={{ fontSize: "11px", color: "#888", marginBottom: "2px" }}>Envío</div>
+            <div style={{ fontWeight: 800, fontSize: "15px" }}>${Number(order.delivery_fee).toLocaleString("es-AR")}</div>
+          </div>
+        )}
+        <div style={{ background: "#1a1a2e", borderRadius: "10px", padding: "10px", textAlign: "center" }}>
+          <div style={{ fontSize: "11px", color: "#aaa", marginBottom: "2px" }}>Total</div>
+          <div style={{ fontWeight: 800, fontSize: "15px", color: "#fff" }}>${Number(order.total).toLocaleString("es-AR")}</div>
+        </div>
+      </div>
+
+      <div style={{ background: "#f8f8f8", borderRadius: "10px", padding: "12px", marginBottom: "16px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+          <span style={{ fontWeight: 700, fontSize: "13px" }}>💰 Pagos</span>
+          <span style={{ fontSize: "12px", color: "#888" }}>{order.payments?.length || 0} imputado(s)</span>
+        </div>
+        {order.payments && order.payments.length > 0 ? (
+          <div>
+            {order.payments.map((p: any) => (
+              <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "1px solid #e0e0e0", fontSize: "13px" }}>
+                <span>
+                  <b>${Number(p.amount).toLocaleString("es-AR")}</b>
+                  {p.account_name && <span style={{ color: "#888", marginLeft: "6px" }}>{p.account_name}</span>}
+                  <span style={{ color: "#aaa", fontSize: "11px", marginLeft: "6px" }}>
+                    {new Date(p.created_at).toLocaleDateString("es-AR")}
+                  </span>
+                  {p.notes && <span style={{ color: "#666", marginLeft: "6px" }}>· {p.notes}</span>}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : <div style={{ fontSize: "12px", color: "#999" }}>Sin pagos registrados</div>}
+
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px", fontSize: "13px", fontWeight: 700 }}>
+          <span>Pagado: <span style={{ color: "#27ae60" }}>${Number(order.payment_paid || 0).toLocaleString("es-AR")}</span></span>
+          {remaining > 0 && <span style={{ color: "#f39c12" }}>Pendiente: ${remaining.toLocaleString("es-AR")}</span>}
+          {remaining <= 0 && <span style={{ color: "#27ae60" }}>✓ Cancelado</span>}
+        </div>
+      </div>
+
+      <div style={{ marginBottom: "16px" }}>
+        <div style={{ fontWeight: 700, fontSize: "13px", marginBottom: "6px" }}>📦 Items</div>
+        {order.items && order.items.length > 0 ? (
+          <div style={{ border: "1px solid #eee", borderRadius: "8px", overflow: "hidden" }}>
+            {order.items.map((item: any, idx: number) => (
+              <div key={idx} style={{ display: "flex", justifyContent: "space-between", padding: "8px 12px", borderBottom: idx < order.items.length - 1 ? "1px solid #f0" : "none", fontSize: "13px" }}>
+                <span>{item.quantity} × {item.product_name}</span>
+                <span style={{ fontWeight: 700 }}>${Number(item.subtotal).toLocaleString("es-AR")}</span>
+              </div>
+            ))}
+          </div>
+        ) : <div style={{ fontSize: "12px", color: "#999" }}>Sin items</div>}
+      </div>
+
+      {order.notes && (
+        <div style={{ fontSize: "13px", color: "#666", fontStyle: "italic", padding: "8px 0", borderTop: "1px solid #eee" }}>
+          {order.notes}
+        </div>
+      )}
     </div>
   );
 }
