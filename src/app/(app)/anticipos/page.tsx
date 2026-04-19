@@ -31,6 +31,7 @@ export default function AnticiposPage() {
   const [viewMode, setViewMode] = useState<"cards" | "list">("cards");
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState("");
+  const [filterConsumed, setFilterConsumed] = useState("");
 
   function load() {
     setLoading(true);
@@ -45,6 +46,8 @@ export default function AnticiposPage() {
   const filtered = advances.filter((a) => {
     if (search && !a.entity_name?.toLowerCase().includes(search.toLowerCase()) && !String(a.id).includes(search)) return false;
     if (filterType && a.entity_type !== filterType) return false;
+    if (filterConsumed === "consumed" && Number(a.used_amount || 0) === 0) return false;
+    if (filterConsumed === "available" && Number(a.used_amount || 0) > 0) return false;
     return true;
   });
 
@@ -60,9 +63,9 @@ export default function AnticiposPage() {
   return (
     <div>
       <div style={{ marginBottom: "16px" }}>
-        <PageTitle>?? Anticipos</PageTitle>
+        <PageTitle>Anticipos</PageTitle>
         <p style={{ fontSize: "13px", color: "#888", margin: "2px 0 0" }}>
-          Consult? los anticipos cargados de clientes y proveedores.
+          Consultá los anticipos cargados de clientes y proveedores.
         </p>
       </div>
 
@@ -84,11 +87,11 @@ export default function AnticiposPage() {
           )}
         </div>
         <div style={{ background: "#fff", borderRadius: "12px", padding: "14px", border: "1px solid #eee" }}>
-          <div style={{ fontSize: "11px", color: "#888", marginBottom: "4px" }}>?? Clientes</div>
+          <div style={{ fontSize: "11px", color: "#888", marginBottom: "4px" }}>Clientes</div>
           <div style={{ fontSize: "20px", fontWeight: 800 }}>{stats.client_count}</div>
         </div>
         <div style={{ background: "#fff", borderRadius: "12px", padding: "14px", border: "1px solid #eee" }}>
-          <div style={{ fontSize: "11px", color: "#888", marginBottom: "4px" }}>?? Proveedores</div>
+          <div style={{ fontSize: "11px", color: "#888", marginBottom: "4px" }}>Proveedores</div>
           <div style={{ fontSize: "20px", fontWeight: 800 }}>{stats.provider_count}</div>
         </div>
       </div>
@@ -97,11 +100,11 @@ export default function AnticiposPage() {
         <div style={{ marginLeft: "auto", display: "flex", gap: "8px", alignItems: "center" }}>
           <button onClick={() => setViewMode("cards")}
             style={{ padding: "6px 12px", borderRadius: "8px", border: "none", background: viewMode === "cards" ? "#1a1a2e" : "#e0e0e0", color: viewMode === "cards" ? "#fff" : "#333", cursor: "pointer", fontSize: "13px" }}>
-            ?
+            Cards
           </button>
           <button onClick={() => setViewMode("list")}
             style={{ padding: "6px 12px", borderRadius: "8px", border: "none", background: viewMode === "list" ? "#1a1a2e" : "#e0e0e0", color: viewMode === "list" ? "#fff" : "#333", cursor: "pointer", fontSize: "13px" }}>
-            ?
+            Lista
           </button>
         </div>
       </div>
@@ -115,6 +118,12 @@ export default function AnticiposPage() {
           <option value="">Tipo: Todos</option>
           <option value="client">Clientes</option>
           <option value="provider">Proveedores</option>
+        </select>
+        <select value={filterConsumed} onChange={e => setFilterConsumed(e.target.value)}
+          style={{ padding: "8px 10px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "13px", minWidth: "160px" }}>
+          <option value="">Consumo: Todos</option>
+          <option value="consumed">Consumidos</option>
+          <option value="available">Sin consumir</option>
         </select>
       </div>
 
@@ -131,6 +140,9 @@ export default function AnticiposPage() {
                     <Badge color={a.entity_type === "provider" ? "#e67e22" : "#27ae60"}>
                       {a.entity_type === "provider" ? "Proveedor" : "Cliente"}
                     </Badge>
+                    {Number(a.used_amount || 0) > 0 && (
+                      <Badge color="#3498db">Consumido</Badge>
+                    )}
                   </div>
                   <div style={{ fontSize: "15px", fontWeight: 700, color: "#222", marginBottom: "6px" }}>
                     {a.entity_name || "Sin nombre"}
@@ -142,7 +154,7 @@ export default function AnticiposPage() {
                   </div>
                   <div style={{ fontSize: "11px", color: "#999" }}>
                     {new Date(a.created_at).toLocaleDateString("es-AR")}
-                    {a.notes ? ` ? ${a.notes}` : ""}
+                    {a.notes ? ` · ${a.notes}` : ""}
                   </div>
                 </div>
               </div>

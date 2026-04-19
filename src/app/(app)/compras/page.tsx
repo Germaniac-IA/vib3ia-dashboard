@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { fetchJson, postJson, deleteJson } from "../../lib";
 import { Card, Badge, PageTitle, Loading, Empty } from "../../components/shared/UI";
-import EditPurchaseOrderModal from "../../components/EditPurchaseOrderModal";
 
 type PO = { id: number; order_number: string; provider_name: string; subtotal: number; discount_value: number; delivery_fee: number; total: number; status_name: string; status_color: string; payment_status_name: string; payment_status_color: string; notes: string; created_at: string; };
 type PS = { id: number; name: string; color: string; };
@@ -48,7 +47,6 @@ export default function ComprasPage() {
   const [showNew, setShowNew] = useState(false);
   const [hasOpenCashSession, setHasOpenCashSession] = useState(false);
   const [detailId, setDetailId] = useState<number | null>(null);
-  const [editId, setEditId] = useState<number | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   function load() {
@@ -134,7 +132,7 @@ export default function ComprasPage() {
                     {o.provider_name && <span style={{ fontSize: "12px", color: "#888" }}>{o.provider_name}</span>}
                   </div>
                   <div style={{ fontSize: "12px", color: "#888" }}>{new Date(o.created_at).toLocaleDateString("es-AR")}</div>
-                  <div style={{ fontSize: "17px", fontWeight: 800, color: "#1a1a2e", marginTop: "4px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>${Number(o.total).toLocaleString("es-AR")}{o.payment_paid != null && Number(o.payment_paid) < Number(o.total) && <span style={{ fontSize: "12px", fontWeight: 400, color: "#f39c12" }}> - ${Number(o.payment_paid).toLocaleString("es-AR")} pagado<span style={{ fontWeight: 400, color: "#e74c3c" }}> (resta ${Number(o.total - o.payment_paid).toLocaleString("es-AR")})</span></span>}{o.payment_paid != null && Number(o.payment_paid) >= Number(o.total) && <span style={{ fontSize: "12px", fontWeight: 400, color: "#27ae60" }}> - Cancelado</span>}</div>
+                  <div style={{ fontSize: "17px", fontWeight: 800, color: "#1a1a2e", marginTop: "4px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>${Number(o.total).toLocaleString("es-AR")}{o.payment_paid != null && Number(o.payment_paid) < Number(o.total) && <span style={{ fontSize: "12px", fontWeight: 400, color: "#f39c12" }}> - ${Number(o.payment_paid).toLocaleString("es-AR")} pagado<span style={{ fontWeight: 400, color: "#e74c3c" }}> (resta ${Number((o.payment_pending ?? (o.total - o.payment_paid))).toLocaleString("es-AR")})</span></span>}{o.payment_paid != null && Number(o.payment_paid) >= Number(o.total) && <span style={{ fontSize: "12px", fontWeight: 400, color: "#27ae60" }}> - Cancelado</span>}</div>
                   <div style={{ display: "flex", gap: "6px", marginTop: "6px", flexWrap: "wrap" }}>
                     {o.status_name && <Badge color={o.status_color || "#888"}>{o.status_name}</Badge>}
                     {o.payment_status_name && <Badge color={o.payment_status_color || "#888"}>{o.payment_status_name}</Badge>}
@@ -153,9 +151,6 @@ export default function ComprasPage() {
                   {o.status_name !== "Recibido" && (
                     <button onClick={e => { e.stopPropagation(); handleReceive(o.id); }} style={{ padding: "5px 8px", borderRadius: "6px", border: "1px solid #27ae60", background: "#fff", color: "#27ae60", cursor: "pointer", fontSize: "12px", fontWeight: 700 }}>✅ Recibir</button>
                   )}
-                  {o.status_name !== "Recibido" && (
-                    <button onClick={e => { e.stopPropagation(); setEditId(o.id); }} style={{ padding: "5px 8px", borderRadius: "6px", border: "1px solid #1a1a2e", background: "#fff", color: "#1a1a2e", cursor: "pointer", fontSize: "12px" }}>✏️</button>
-                  )}
                   <button onClick={e => { e.stopPropagation(); handleDelete(o.id); }} style={{ padding: "5px 8px", borderRadius: "6px", border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontSize: "12px", color: "#e74c3c" }}>🗑️</button>
                 </div>
               </div>
@@ -166,7 +161,6 @@ export default function ComprasPage() {
 
       {showNew && <NewNPModal onClose={() => setShowNew(false)} onCreated={() => { setShowNew(false); setRefreshKey(k => k + 1); }} />}
       {detailId && <NPDetailModal orderId={detailId} onClose={() => setDetailId(null)} onUpdated={() => setRefreshKey(k => k + 1)} />}
-      {editId && <EditPurchaseOrderModal orderId={editId} onClose={() => setEditId(null)} onUpdated={() => { setEditId(null); setRefreshKey(k => k + 1); }} />}
     </div>
   );
 }

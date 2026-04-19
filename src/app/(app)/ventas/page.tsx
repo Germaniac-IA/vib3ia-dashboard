@@ -5,7 +5,6 @@ import { fetchJson, postJson, deleteJson } from "../../lib";
 import { Card, Badge, IconButton, PageTitle, Loading, Empty } from "../../components/shared/UI";
 import OrderDetailReadOnly from "../../components/OrderDetailReadOnly";
 import NewSaleModal from "../../components/NewSaleModal";
-import EditSaleModal from "../../components/EditSaleModal";
 import type { SaleChannel, OrderStatus, PaymentStatus } from "../../types";
 
 type OrderRow = {
@@ -59,7 +58,6 @@ export default function VentasPage() {
   const [stats, setStats] = useState<Stats | null>(null);
 
   const [detailId, setDetailId] = useState<number | null>(null);
-  const [editId, setEditId] = useState<number | null>(null);
   const [showNew, setShowNew] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [statusTargetId, setStatusTargetId] = useState(0);
@@ -98,7 +96,6 @@ export default function VentasPage() {
 
   useEffect(() => { load(); }, [refreshKey, period]);
 
-  function handleUpdated() { setEditId(null); setDetailId(null); setRefreshKey(k => k + 1); }
   function handleCreated() { setShowNew(false); setRefreshKey(k => k + 1); }
 
   async function handleDelete(id: number, orderNumber: string) {
@@ -304,10 +301,6 @@ export default function VentasPage() {
                       style={{ padding: "5px 8px", borderRadius: "6px", border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontSize: "12px" }}>
                       👁️
                     </button>
-                    <button onClick={() => setEditId(o.id)} title="Editar"
-                      style={{ padding: "5px 8px", borderRadius: "6px", border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontSize: "12px" }}>
-                      ✏️
-                    </button>
                     <button onClick={() => openStatusModal(o.id)} title="Editar estado"
                       style={{ padding: "5px 8px", borderRadius: "6px", border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontSize: "12px" }}>
                       🚚
@@ -360,7 +353,6 @@ export default function VentasPage() {
                   </td>
                   <td style={{ padding: "8px", textAlign: "center" }}>
                     <button onClick={() => setDetailId(o.id)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "12px", padding: "2px 4px" }}>👁️</button>
-                    <button onClick={() => setEditId(o.id)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "12px", padding: "2px 4px" }}>✏️</button>
                     <button onClick={() => handleDelete(o.id, o.order_number)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "12px", padding: "2px 4px", color: "#e74c3c" }}>🗑️</button>
                   </td>
                 </tr>
@@ -375,20 +367,6 @@ export default function VentasPage() {
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}
           onClick={e => e.target === e.currentTarget && setDetailId(null)}>
           <OrderDetailReadOnly orderId={detailId} onClose={() => setDetailId(null)} />
-        </div>
-      )}
-
-      {editId && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}
-          onClick={e => e.target === e.currentTarget && setEditId(null)}>
-          <EditSaleModal
-            orderId={editId}
-            saleChannels={saleChannels}
-            orderStatuses={orderStatuses}
-            paymentStatuses={paymentStatuses}
-            onClose={() => setEditId(null)}
-            onUpdated={handleUpdated}
-          />
         </div>
       )}
 

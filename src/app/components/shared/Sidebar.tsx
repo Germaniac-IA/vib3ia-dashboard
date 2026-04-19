@@ -28,24 +28,19 @@ const NAV_STRUCTURE: NavSection[] = [
     items: [
       { label: "Parámetros", icon: "⚙️", href: "/parametros" },
       { label: "Productos", icon: "📦", href: "/productos" },
-      { label: "Contactos", icon: "👥", href: "/contactos" },
-      { label: "Ventas", icon: "🧾", href: "/ventas" },
       { label: "Leads", icon: "📍", href: "/leads" },
-      { label: "Entregas", icon: "🚚", href: "/entregas" },
+      { label: "Contactos", icon: "👥", href: "/contactos" },
     ],
   },
   {
-    title: "CAJA",
+    title: "OPERACIÓN",
     items: [
+      { label: "Ventas", icon: "🧾", href: "/ventas" },
       { label: "Cobros", icon: "💰", href: "/cobros" },
-      { label: "Pagos", icon: "💸", href: "/pagos" },
       { label: "Compras", icon: "📥", href: "/compras" },
-    ],
-  },
-  {
-    title: "OTROS",
-    items: [
-      { label: "Anticipos", icon: "??", href: "/anticipos" },
+      { label: "Pagos", icon: "💸", href: "/pagos" },
+      { label: "Entregas", icon: "🚚", href: "/entregas" },
+      { label: "Anticipos", icon: "💳", href: "/anticipos" },
     ],
   },
 ];
