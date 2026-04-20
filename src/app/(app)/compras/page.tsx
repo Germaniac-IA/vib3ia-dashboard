@@ -186,6 +186,9 @@ function NewNPModal({ onClose, onCreated }: { onClose: () => void; onCreated: ()
 
   const [provSearch, setProvSearch] = useState("");
   const [providerAdvances, setProviderAdvances] = useState<{ id: number; amount: number; remaining: number; notes: string; created_at: string }[]>([]);
+  const [advanceSeleccionado, setAdvanceSeleccionado] = useState<{ id: number; remaining: number } | null>(null);
+  const [advanceMontoUsar, setAdvanceMontoUsar] = useState("");
+  const [showAdvanceModal, setShowAdvanceModal] = useState(false);
   const [showProviderDropdown, setShowProviderDropdown] = useState(false);
   const [showProductsDropdown, setShowProductsDropdown] = useState(false);
   const [showInputItemsDropdown, setShowInputItemsDropdown] = useState(false);
@@ -300,7 +303,11 @@ function NewNPModal({ onClose, onCreated }: { onClose: () => void; onCreated: ()
         payload.payment_method_id = Number(paymentMethodId);
         payload.payment_amount = Number(paymentAmount);
       }
-      await postJson("/purchase-orders", payload);
+      if (advanceSeleccionado && advanceMontoUsar && Number(advanceMontoUsar) > 0) {
+        payload.advance_id = advanceSeleccionado.id;
+        payload.advance_amount = Number(advanceMontoUsar);
+      }
+      const newOrder = await postJson<any>("/purchase-orders", payload);
       onCreated();
     } catch (e: any) { alert("Error: " + (e?.response?.data?.error || e?.message || "No se pudo crear")); }
     finally { setSaving(false); }
@@ -339,9 +346,9 @@ function NewNPModal({ onClose, onCreated }: { onClose: () => void; onCreated: ()
               )}
               {!!form.provider_id && (() => {
                 const totalRemaining = providerAdvances.reduce((s, a) => s + Number(a.remaining || 0), 0);
-                return totalRemaining > 0 ? (
-                  <div style={{ marginTop: "8px", display: "inline-flex", fontSize: "11px", background: "#6c63ff", color: "#fff", padding: "2px 8px", borderRadius: "4px", fontWeight: 700 }}>
-                    💳 {totalRemaining.toLocaleString("es-AR")} anticipo
+                return totalRemaining > 0 && !advanceSeleccionado ? (
+                  <div style={{ marginTop: "8px", fontSize: "11px", background: "#6c63ff", color: "#fff", padding: "2px 8px", borderRadius: "4px", fontWeight: 700, display: "inline-block" }}>
+                    💳 {totalRemaining.toLocaleString("es-AR")} anticipo disp.
                   </div>
                 ) : null;
               })()}
@@ -508,12 +515,65 @@ function NewNPModal({ onClose, onCreated }: { onClose: () => void; onCreated: ()
             <span style={{ fontWeight: 700, fontSize: "14px", color: isPaid ? "#27ae60" : "#666" }}>✅ Pagado en el acto</span>
           </label>
           {isPaid && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginTop: "10px" }}>
-              <FieldSelect label="Método de pago" value={paymentMethodId} onChange={setPaymentMethodId} options={paymentMethods} />
-              <FieldInput label="Monto pagado" value={paymentAmount} onChange={setPaymentAmount} placeholder="0.00" type="number" />
+            <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "8px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                <FieldSelect label="Método de pago" value={paymentMethodId} onChange={setPaymentMethodId} options={paymentMethods} />
+                <FieldInput label="Monto pagado" value={paymentAmount} onChange={setPaymentAmount} placeholder="0.00" type="number" />
+              </div>
+              {/* Anticipo rows */}
+              {advanceSeleccionado && (
+                <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", gap: "8px", alignItems: "center", background: "#f0f0ff", padding: "8px", borderRadius: "8px" }}>
+                  <span style={{ fontSize: "11px", fontWeight: 700, color: "#6c63ff" }}>💳 Anticipo #{advanceSeleccionado.id}</span>
+                  <input type="number" value={advanceMontoUsar} onChange={e => setAdvanceMontoUsar(e.target.value)}
+                    style={{ padding: "4px 8px", borderRadius: "6px", border: "1px solid #ddd", fontSize: "12px", textAlign: "right" }}
+                    max={advanceSeleccionado.remaining} min={0} />
+                  <button onClick={() => { setAdvanceSeleccionado(null); setAdvanceMontoUsar(""); }}
+                    style={{ background: "none", border: "none", color: "#e74c3c", cursor: "pointer", fontSize: "14px", padding: "0 4px" }}>✕</button>
+                </div>
+              )}
+              {/* Botón agregar anticipo */}
+              {providerAdvances.filter(a => Number(a.remaining) > 0).length > 0 && !advanceSeleccionado && (
+                <button onClick={() => setShowAdvanceModal(true)}
+                  style={{ fontSize: "12px", background: "none", border: "1px dashed #6c63ff", color: "#6c63ff", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontWeight: 700 }}>
+                  💳 Usar anticipo del proveedor
+                </button>
+              )}
             </div>
           )}
         </div>
+
+        {/* Anticipo modal */}
+        {showAdvanceModal && providerAdvances.length > 0 && (
+          <div style={{ marginBottom: "12px", padding: "12px", background: "#f8f8ff", borderRadius: "8px", border: "1px solid #6c63ff" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+              <span style={{ fontWeight: 700, fontSize: "13px" }}>💳 Usar anticipo del proveedor</span>
+              <button onClick={() => setShowAdvanceModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "16px" }}>✕</button>
+            </div>
+            {providerAdvances.filter(a => Number(a.remaining) > 0).length === 0 && (
+              <div style={{ fontSize: "12px", color: "#888" }}>No hay anticipos disponibles</div>
+            )}
+            {providerAdvances.filter(a => Number(a.remaining) > 0).map(adv => (
+              <div key={adv.id} onClick={() => {
+                setAdvanceSeleccionado({ id: adv.id, remaining: Number(adv.remaining) });
+                setAdvanceMontoUsar(String(Math.min(Number(adv.remaining), total)));
+                setShowAdvanceModal(false);
+              }} style={{ padding: "8px", borderBottom: "1px solid #eee", cursor: "pointer", fontSize: "13px" }} onMouseEnter={e => (e.currentTarget.style.background = "#f0f0ff")} onMouseLeave={e => (e.currentTarget.style.background = "none")}>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span>Anticipo #{adv.id}</span>
+                  <span style={{ fontWeight: 700, color: "#27ae60" }}>${Number(adv.remaining).toLocaleString("es-AR")} disponible</span>
+                </div>
+                {adv.notes && <div style={{ fontSize: "11px", color: "#888" }}>{adv.notes}</div>}
+              </div>
+            ))}
+            {advanceSeleccionado && (
+              <div style={{ marginTop: "8px", display: "flex", gap: "6px", alignItems: "center" }}>
+                <span style={{ fontSize: "12px", fontWeight: 700 }}>Monto a usar:</span>
+                <input type="number" value={advanceMontoUsar} onChange={e => setAdvanceMontoUsar(e.target.value)} style={{ flex: 1, padding: "6px", borderRadius: "6px", border: "1px solid #ddd", fontSize: "13px" }} max={advanceSeleccionado.remaining} min={0} />
+                <button onClick={() => { setAdvanceSeleccionado(null); setAdvanceMontoUsar(""); }} style={{ padding: "6px 10px", borderRadius: "6px", border: "1px solid #e74c3c", background: "#fff", color: "#e74c3c", cursor: "pointer", fontSize: "12px" }}>Quitar</button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Total */}
         <div style={{ borderTop: "2px solid #1a1a2e", paddingTop: "12px", marginBottom: "16px" }}>
@@ -544,28 +604,28 @@ function NPDetailModal({ orderId, onClose, onUpdated }: any) {
       .finally(() => setLoading(false));
   }, [orderId]);
 
+  async function handleReceive() {
+    if (!confirm("Marcar como Recibida e incrementar stock?")) return;
+    try {
+      await postJson("/purchase-orders/" + orderId + "/receive", {});
+      onUpdated();
+    } catch (e) {
+      alert("Error");
+    }
+  }
+
   if (loading) return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
-      <div style={{ background: "#fff", borderRadius: "16px", padding: "40px", textAlign: "center", width: "100%", maxWidth: "600px" }}>
-        <Loading />
-      </div>
+    <div style={{ background: "#fff", borderRadius: "16px", padding: "40px", textAlign: "center", width: "100%", maxWidth: "600px" }}>
+      <Loading />
     </div>
   );
 
   if (error || !order) return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
-      <div style={{ background: "#fff", borderRadius: "16px", padding: "40px", textAlign: "center", width: "100%", maxWidth: "600px" }}>
-        <p style={{ color: "#e74c3c" }}>{error || "No se pudo cargar la compra"}</p>
-        <button onClick={onClose} style={{ padding: "8px 20px", borderRadius: "8px", border: "none", background: "#333", color: "#fff", cursor: "pointer" }}>Cerrar</button>
-      </div>
+    <div style={{ background: "#fff", borderRadius: "16px", padding: "40px", textAlign: "center", width: "100%", maxWidth: "600px" }}>
+      <p style={{ color: "#e74c3c" }}>{error || "No se pudo cargar la compra"}</p>
+      <button onClick={onClose} style={{ padding: "8px 20px", borderRadius: "8px", border: "none", background: "#333", color: "#fff", cursor: "pointer" }}>Cerrar</button>
     </div>
   );
-
-  async function handleReceive() {
-    if (!confirm("Marcar como Recibida e incrementar stock?")) return;
-    try { await postJson("/purchase-orders/" + orderId + "/receive", {}); onUpdated(); }
-    catch (e) { alert("Error"); }
-  }
 
   const remaining = Number(order.total) - Number(order.payment_paid || 0);
 
@@ -588,13 +648,10 @@ function NPDetailModal({ orderId, onClose, onUpdated }: any) {
       <div style={{ display: "flex", gap: "8px", marginBottom: "16px", flexWrap: "wrap" }}>
         {order.status_name && <Badge color={order.status_color}>{order.status_name}</Badge>}
         {order.payment_status_name && <Badge color={order.payment_status_color}>{order.payment_status_name}</Badge>}
-        <span style={{ padding: "6px 10px", borderRadius: "8px", background: "#f0f0f0", fontSize: "13px", color: "#666" }}>
-          📍 Compra
-        </span>
+        <span style={{ padding: "6px 10px", borderRadius: "8px", background: "#f0f0f0", fontSize: "13px", color: "#666" }}>📍 Compra</span>
         {order.status_name !== "Recibido" && (
-          <button onClick={handleReceive}
-            style={{ padding: "6px 14px", borderRadius: "8px", border: "none", background: "#1a1a2e", color: "#fff", cursor: "pointer", fontSize: "13px", fontWeight: 700 }}>
-            Marcar recibida
+          <button onClick={handleReceive} style={{ padding: "6px 14px", borderRadius: "8px", border: "none", background: "#27ae60", color: "#fff", cursor: "pointer", fontSize: "13px", fontWeight: 700 }}>
+            Marcar Recibida
           </button>
         )}
       </div>
@@ -658,7 +715,7 @@ function NPDetailModal({ orderId, onClose, onUpdated }: any) {
         {order.items && order.items.length > 0 ? (
           <div style={{ border: "1px solid #eee", borderRadius: "8px", overflow: "hidden" }}>
             {order.items.map((item: any, idx: number) => (
-              <div key={idx} style={{ display: "flex", justifyContent: "space-between", padding: "8px 12px", borderBottom: idx < order.items.length - 1 ? "1px solid #f0" : "none", fontSize: "13px" }}>
+              <div key={idx} style={{ display: "flex", justifyContent: "space-between", padding: "8px 12px", borderBottom: idx < order.items.length - 1 ? "1px solid #f0f0f0" : "none", fontSize: "13px" }}>
                 <span>{item.quantity} × {item.product_name}</span>
                 <span style={{ fontWeight: 700 }}>${Number(item.subtotal).toLocaleString("es-AR")}</span>
               </div>
@@ -672,7 +729,7 @@ function NPDetailModal({ orderId, onClose, onUpdated }: any) {
           {order.notes}
         </div>
       )}
-    </div>
+      </div>
     </div>
   );
 }
