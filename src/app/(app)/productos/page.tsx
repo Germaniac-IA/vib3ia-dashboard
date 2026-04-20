@@ -241,7 +241,7 @@ export default function ProductosPage() {
         }
       `}</style>
 
-    <div style={{ maxWidth: "900px" }}>
+    <div style={{ width: "100%" }}>
       <PageTitle>📦 Productos</PageTitle>
       <div style={{ background: "linear-gradient(135deg, #6c63ff15, #1a1a2e08)", border: "1px solid #6c63ff30", borderRadius: "12px", padding: "14px 18px", marginBottom: "20px", fontSize: "12px", color: "#666", lineHeight: "1.5" }}>
         <strong style={{ color: "#6c63ff" }}>📦 Catalogo de productos</strong><br />
