@@ -196,13 +196,13 @@ export default function ProductosPage() {
 
   const computedCost = components.reduce((sum, c) => sum + (Number(c.quantity) * Number(c.default_cost)), 0);
 
-  const filtered = ((search
+  const filtered = (search
     ? products.filter(p =>
         p.name.toLowerCase().includes(search.toLowerCase()) ||
         (p.sku || "").toLowerCase().includes(search.toLowerCase()) ||
         (p.sku_externo || "").toLowerCase().includes(search.toLowerCase())
       )
-    : products)).filter(p => showAll || p.is_active !== false);
+    : products.filter(p => showAll || p.is_active !== false));
 
   const grouped: Record<string, Product[]> = {};
   filtered.forEach(p => {
@@ -228,6 +228,19 @@ export default function ProductosPage() {
   if (loading) return <Loading />;
 
   return (
+    <>
+      <style>{`
+        @media (max-width: 768px) {
+          .prod-table-header, .prod-table-row { grid-template-columns: 2fr 100px 100px 90px !important; }
+          .prod-table-header > div:nth-child(2),
+          .prod-table-header > div:nth-child(3),
+          .prod-table-header > div:nth-child(4),
+          .prod-table-row > div:nth-child(2),
+          .prod-table-row > div:nth-child(3),
+          .prod-table-row > div:nth-child(4) { display: none !important; }
+        }
+      `}</style>
+
     <div style={{ maxWidth: "900px" }}>
       <PageTitle>📦 Productos</PageTitle>
       <div style={{ background: "linear-gradient(135deg, #6c63ff15, #1a1a2e08)", border: "1px solid #6c63ff30", borderRadius: "12px", padding: "14px 18px", marginBottom: "20px", fontSize: "12px", color: "#666", lineHeight: "1.5" }}>
@@ -307,7 +320,7 @@ export default function ProductosPage() {
         ))
       ) : (
         <div style={{ border: "1px solid #eee", borderRadius: "12px", overflow: "hidden" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 100px 100px 90px", gap: "0", background: "#f8f8f8", padding: "8px 12px", fontSize: "11px", fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "1px", borderBottom: "1px solid #eee" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 100px 100px 90px", gap: "0", background: "#f8f8f8", padding: "8px 12px", className: "prod-table-header", fontSize: "11px", fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "1px", borderBottom: "1px solid #eee" }}>
             {[
               { key: "name" as const, label: "Producto" },
               { key: "sku" as const, label: "SKU" },
@@ -326,7 +339,7 @@ export default function ProductosPage() {
             <div>Acciones</div>
           </div>
           {sortedList.map(p => (
-            <div key={p.id} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 100px 100px 90px", gap: "0", padding: "8px 12px", fontSize: "13px", alignItems: "center", borderBottom: "1px solid #f5f5f5", background: p.is_active === false ? "#fafafa" : "#fff", opacity: p.is_active === false ? 0.55 : 1 }}>
+            <div key={p.id} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 100px 100px 90px", gap: "0", padding: "8px 12px", fontSize: "13px", className: "prod-table-row", alignItems: "center", borderBottom: "1px solid #f5f5f5", background: p.is_active === false ? "#fafafa" : "#fff", opacity: p.is_active === false ? 0.55 : 1 }}>
               <div style={{ fontWeight: 700, color: p.is_active === false ? "#aaa" : undefined, textDecoration: p.is_active === false ? "line-through" : undefined, cursor: "pointer" }} onClick={() => openEdit(p)}>{p.name}</div>
               <div style={{ fontSize: "12px", color: "#aaa" }}>{p.sku || "—"}</div>
               <div style={{ fontSize: "12px", color: "#888" }}>{p.category_name || "Sin"}</div>
@@ -569,5 +582,6 @@ export default function ProductosPage() {
         </div>
       )}
     </div>
+    </>
   );
 }
