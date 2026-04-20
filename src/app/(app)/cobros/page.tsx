@@ -15,6 +15,9 @@ export default function CobrosPage() {
   const [movements, setMovements] = useState<CashMovement[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [period, setPeriod] = useState<Period>("today");
+  const [filterReason, setFilterReason] = useState<string>("all");
+  const filtered = filterReason === "all" ? movements : movements.filter((m: any) => m.reason === filterReason);
+  const filteredTotal = filtered.reduce((s: number, m: any) => s + Number(m.amount), 0);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
@@ -210,14 +213,26 @@ export default function CobrosPage() {
         ))}
       </div>
 
+      {/* Reason filter */}
+      <div style={{ display: "flex", gap: "4px", background: "#f0f0f0", padding: "3px", borderRadius: "8px", marginBottom: "12px", width: "fit-content" }}>
+        {(["all", "nv_payment", "advance", "other_in"] as const).map(r => (
+          <button key={r} onClick={() => setFilterReason(r)} style={{ padding: "5px 12px", borderRadius: "6px", border: "none", background: filterReason === r ? "#6c63ff" : "transparent", color: filterReason === r ? "#fff" : "#666", cursor: "pointer", fontSize: "12px", fontWeight: 700 }}>
+            {r === "all" ? "Todos" : r === "nv_payment" ? "NV" : r === "advance" ? "Anticipo" : "Otro"}
+          </button>
+        ))}
+        <span style={{ padding: "5px 12px", borderRadius: "6px", background: "#27ae60", color: "#fff", fontSize: "12px", fontWeight: 700 }}>
+          ${filteredTotal.toLocaleString("es-AR")}
+        </span>
+      </div>
+
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", gap: "12px", flexWrap: "wrap" }}>
         {!hasOpenCashSession && <div style={{ fontSize: "12px", color: "#e67e22", fontWeight: 700 }}>Abrí una caja para registrar cobros</div>}
         <button onClick={openMovForm} disabled={!hasOpenCashSession} title={!hasOpenCashSession ? "Necesitás abrir una caja primero" : ""} style={{ padding: "8px 16px", borderRadius: "8px", border: "none", background: hasOpenCashSession ? "#27ae60" : "#bfc6cd", color: "#fff", cursor: hasOpenCashSession ? "pointer" : "not-allowed", fontSize: "13px", fontWeight: 700 }}>💰 Registrar Cobro</button>
       </div>
 
-      {loading ? <Loading /> : movements.length === 0 ? <Empty message="Sin cobros registrados" /> : (
+      {loading ? <Loading /> : filtered.length === 0 ? <Empty message="Sin cobros registrados" /> : (
         <div style={{ display: "grid", gap: "6px" }}>
-          {movements.map(m => (
+          {filtered.map(m => (
             <Card key={m.id}>
               <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                 <span style={{ fontSize: "20px" }}>📥</span>
@@ -226,6 +241,9 @@ export default function CobrosPage() {
                     <span style={{ fontWeight: 700, fontSize: "14px", color: "#27ae60" }}>+${Number(m.amount).toLocaleString("es-AR")}</span>
                     <span style={{ fontSize: "12px", color: "#888" }}>{m.account_name}</span>
                     <span style={{ fontSize: "11px", background: "#f0f0f0", padding: "2px 6px", borderRadius: "4px", color: "#666" }}>
+                      #{m.id}
+                    </span>
+                    <span style={{ fontSize: "11px", background: "#e8e8ff", padding: "2px 6px", borderRadius: "4px", color: "#6c63ff" }}>
                       {m.reason === "nv_payment" ? "NV " + (m.order_number || "") : m.reason === "advance" ? "Anticipo" : m.reason === "other_in" ? "Ingreso" : "Otro"}
                     </span>
                   </div>

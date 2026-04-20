@@ -32,6 +32,7 @@ export default function ProductosPage() {
   const [period, setPeriod] = useState<"today"|"week"|"month">("today");
   const [editing, setEditing] = useState<Product | null>(null);
   const [components, setComponents] = useState<ProductComponent[]>([]);
+  const [pendingComponents, setPendingComponents] = useState<{input_item_id: number, quantity: number, input_item_name: string}[]>([]);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
   const [showAll, setShowAll] = useState(false);
@@ -91,6 +92,7 @@ export default function ProductosPage() {
     setEditing(null);
     setForm({ name: "", sku: "", sku_externo: "", description: "", commercial_description: "", price: "", unit: "unidad", category_id: "", brand_id: "", stock_quantity: "", min_stock: "", requires_stock: false, is_premium: false, premium_level: 5, cost_price: "", uses_inputs: false, image_url: "", _pendingImage: "", _orig_image_url: "", _orig_commercial_description: "" });
     setComponents([]);
+    setPendingComponents([]);
     setSelectedInput("");
     setInputDisplay("");
     setInputQty("1");
@@ -120,22 +122,37 @@ export default function ProductosPage() {
   }
 
   async function addComponent() {
-    if (!selectedInput || !editing) return;
-    try {
-      await postJson(`/products/${editing.id}/components`, { input_item_id: Number(selectedInput), quantity: Number(inputQty) });
+    if (!selectedInput) return;
+    const inputName = allInputs.find(i => String(i.id) === selectedInput)?.name || '';
+    if (editing) {
+      try {
+        await postJson(`/products/${editing.id}/components`, { input_item_id: Number(selectedInput), quantity: Number(inputQty) });
+        setSelectedInput("");
+        setInputDisplay("");
+        setInputQty("1");
+        loadComponents(editing.id);
+      } catch (e) { console.error(e); }
+    } else {
+      // New product - add to pending list
+      setPendingComponents(prev => [...prev, { input_item_id: Number(selectedInput), quantity: Number(inputQty), input_item_name: inputName }]);
       setSelectedInput("");
       setInputDisplay("");
       setInputQty("1");
-      loadComponents(editing.id);
-    } catch (e) { console.error(e); }
+    }
   }
 
   async function removeComponent(compId: number) {
-    if (!editing) return;
-    try {
-      await deleteJson(`/products/${editing.id}/components/${compId}`);
-      loadComponents(editing.id);
-    } catch (e) { console.error(e); }
+    console.log("DEBUG removeComponent:", { compId, editingId: editing?.id });
+    if (editing) {
+      try {
+        const url = `/products/${editing.id}/components/${compId}`;
+        console.log("DEBUG DELETE url:", url);
+        await deleteJson(url);
+        loadComponents(editing.id);
+      } catch (e) { console.error(e); }
+    } else {
+      setPendingComponents(prev => prev.filter(c => c.input_item_id !== compId));
+    }
   }
 
   async function handleSave() {
@@ -164,6 +181,15 @@ export default function ProductosPage() {
       } else {
         const created = await postJson<{id:number}>(`/products`, payload);
         savedId = created.id;
+        // Create pending components for new products
+        if (pendingComponents.length > 0 && savedId) {
+          for (const comp of pendingComponents) {
+            try {
+              await postJson(`/products/${savedId}/components`, { input_item_id: comp.input_item_id, quantity: comp.quantity });
+            } catch (e) { console.error(e); }
+          }
+          setPendingComponents([]);
+        }
       }
       // Upload image if pending file (backend saves image to disk and updates DB with URL)
       if ((form as any)._pendingImage && savedId) {
@@ -196,13 +222,13 @@ export default function ProductosPage() {
 
   const computedCost = components.reduce((sum, c) => sum + (Number(c.quantity) * Number(c.default_cost)), 0);
 
-  const filtered = ((search
+  const filtered = (search
     ? products.filter(p =>
         p.name.toLowerCase().includes(search.toLowerCase()) ||
         (p.sku || "").toLowerCase().includes(search.toLowerCase()) ||
         (p.sku_externo || "").toLowerCase().includes(search.toLowerCase())
       )
-    : products)).filter(p => showAll || p.is_active !== false);
+    : products.filter(p => showAll || p.is_active !== false));
 
   const grouped: Record<string, Product[]> = {};
   filtered.forEach(p => {
@@ -228,7 +254,20 @@ export default function ProductosPage() {
   if (loading) return <Loading />;
 
   return (
-    <div style={{ maxWidth: "900px" }}>
+    <>
+      <style>{`
+        @media (max-width: 768px) {
+          .prod-table-header, .prod-table-row { grid-template-columns: 2fr 100px 100px 90px !important; }
+          .prod-table-header > div:nth-child(2),
+          .prod-table-header > div:nth-child(3),
+          .prod-table-header > div:nth-child(4),
+          .prod-table-row > div:nth-child(2),
+          .prod-table-row > div:nth-child(3),
+          .prod-table-row > div:nth-child(4) { display: none !important; }
+        }
+      `}</style>
+
+    <div style={{ width: "100%" }}>
       <PageTitle>📦 Productos</PageTitle>
       <div style={{ background: "linear-gradient(135deg, #6c63ff15, #1a1a2e08)", border: "1px solid #6c63ff30", borderRadius: "12px", padding: "14px 18px", marginBottom: "20px", fontSize: "12px", color: "#666", lineHeight: "1.5" }}>
         <strong style={{ color: "#6c63ff" }}>📦 Catalogo de productos</strong><br />
@@ -307,7 +346,7 @@ export default function ProductosPage() {
         ))
       ) : (
         <div style={{ border: "1px solid #eee", borderRadius: "12px", overflow: "hidden" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 100px 100px 90px", gap: "0", background: "#f8f8f8", padding: "8px 12px", fontSize: "11px", fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "1px", borderBottom: "1px solid #eee" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 100px 100px 90px", gap: "0", background: "#f8f8f8", padding: "8px 12px", className: "prod-table-header", fontSize: "11px", fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "1px", borderBottom: "1px solid #eee" }}>
             {[
               { key: "name" as const, label: "Producto" },
               { key: "sku" as const, label: "SKU" },
@@ -326,7 +365,7 @@ export default function ProductosPage() {
             <div>Acciones</div>
           </div>
           {sortedList.map(p => (
-            <div key={p.id} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 100px 100px 90px", gap: "0", padding: "8px 12px", fontSize: "13px", alignItems: "center", borderBottom: "1px solid #f5f5f5", background: p.is_active === false ? "#fafafa" : "#fff", opacity: p.is_active === false ? 0.55 : 1 }}>
+            <div key={p.id} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 100px 100px 90px", gap: "0", padding: "8px 12px", fontSize: "13px", className: "prod-table-row", alignItems: "center", borderBottom: "1px solid #f5f5f5", background: p.is_active === false ? "#fafafa" : "#fff", opacity: p.is_active === false ? 0.55 : 1 }}>
               <div style={{ fontWeight: 700, color: p.is_active === false ? "#aaa" : undefined, textDecoration: p.is_active === false ? "line-through" : undefined, cursor: "pointer" }} onClick={() => openEdit(p)}>{p.name}</div>
               <div style={{ fontSize: "12px", color: "#aaa" }}>{p.sku || "—"}</div>
               <div style={{ fontSize: "12px", color: "#888" }}>{p.category_name || "Sin"}</div>
@@ -502,7 +541,7 @@ export default function ProductosPage() {
               </label>
               {form.uses_inputs && (
                 <div style={{ marginTop: "10px" }}>
-                  {components.length > 0 && (
+                  {(components.length > 0 || pendingComponents.length > 0) && (
                     <div style={{ marginBottom: "8px" }}>
                       {components.map(c => (
                         <div key={c.id} style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px", fontSize: "12px" }}>
@@ -511,6 +550,17 @@ export default function ProductosPage() {
                           <button onClick={() => removeComponent(c.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#e74c3c", fontSize: "13px" }}>x</button>
                         </div>
                       ))}
+                      {pendingComponents.map((c, idx) => {
+                        const inputInfo = allInputs.find(i => i.id === c.input_item_id);
+                        const unitCost = inputInfo ? Number(inputInfo.default_cost) : 0;
+                        return (
+                        <div key={"pending-" + idx} style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px", fontSize: "12px", opacity: 0.7 }}>
+                          <span style={{ flex: 1 }}>{c.quantity} x {c.input_item_name} ({inputInfo?.unit || ''})</span>
+                          <span style={{ color: "#888" }}>${(c.quantity * unitCost).toLocaleString("es-AR")}</span>
+                          <button onClick={() => removeComponent(c.input_item_id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#e74c3c", fontSize: "13px" }}>x</button>
+                        </div>
+                        );
+                      })}
                       <div style={{ fontSize: "12px", fontWeight: 700, color: "#6c63ff", marginTop: "4px", borderTop: "1px solid #ddd", paddingTop: "4px" }}>
                         Costo total: ${computedCost.toLocaleString("es-AR")}
                       </div>
@@ -569,5 +619,6 @@ export default function ProductosPage() {
         </div>
       )}
     </div>
+    </>
   );
 }

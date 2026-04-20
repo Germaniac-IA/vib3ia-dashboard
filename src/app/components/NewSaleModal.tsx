@@ -173,21 +173,25 @@ export default function NewSaleModal({ saleChannels, orderStatuses, paymentStatu
       // Si "Paga en el acto" está activado, registrar el cobro
       if (pagaEnElActo && montoPagado && Number(montoPagado) > 0) {
         try {
-          // Registrar movimiento de caja (ingreso)
-          await postJson("/cash-movements", {
-            financial_account_id: Number(pagoAccountId),
-            type: "in",
-            reason: advanceSeleccionado ? "advance" : "nv_payment",
-            order_id: orderResult.id,
-            client_id: selectedContact.id,
-            amount: Number(montoPagado),
-            notes: advanceSeleccionado ? `Usa anticipo #${advanceSeleccionado.id}` : "Cobro en el acto",
-          });
-
-          // Si se usó anticipo, registrar el uso
+          // Si se usó anticipo, registrar el uso (NO crea cash-movement, ya entró cuando se generó el anticipo)
           if (advanceSeleccionado && advanceMontoUsar && Number(advanceMontoUsar) > 0) {
             await postJson(`/advances/${advanceSeleccionado.id}/use`, {
               amount: Number(advanceMontoUsar),
+              order_id: orderResult.id,
+            });
+          }
+
+          // Solo crear cash-movement para el monto PAGADO EN EFECTIVO (montoPagado es efectivo, advance es adicional)
+          const efectivoMonto = Number(montoPagado);
+          if (efectivoMonto > 0) {
+            await postJson("/cash-movements", {
+              financial_account_id: Number(pagoAccountId),
+              type: "in",
+              reason: "nv_payment",
+              order_id: orderResult.id,
+              client_id: selectedContact.id,
+              amount: efectivoMonto,
+              notes: "Cobro en el acto",
             });
           }
         } catch (e: any) {

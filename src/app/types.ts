@@ -60,6 +60,7 @@ export type Order = {
   notes?: string;
   created_at: string;
   delivered_date?: string;
+  sale_channel_has_delivery?: boolean;
 };
 
 export type OrderDetail = {
@@ -104,6 +105,7 @@ export type SaleChannel = {
   name: string;
   is_active: boolean;
   sort_order: number;
+  has_delivery: boolean;
 };
 
 export type OrderStatus = {
