@@ -83,19 +83,10 @@ export default function PagosPage() {
   );
 
   async function handleRegisterMovement() {
-    if (!movForm.financial_account_id || !movForm.amount) { alert("Complet? cuenta y monto"); return; }
+    if (!movForm.financial_account_id || !movForm.amount) { alert("Completá cuenta y monto"); return; }
     setSaving(true);
     try {
-      if (movForm.reason === "advance") {
-        if (!movForm.supplier_id) { alert("Seleccion? un proveedor"); setSaving(false); return; }
-        await postJson("/advances", {
-          entity_type: "provider",
-          entity_id: Number(movForm.supplier_id),
-          amount: Number(movForm.amount),
-          notes: movForm.notes || undefined,
-          financial_account_id: Number(movForm.financial_account_id),
-        });
-      }
+      // Create cash movement
       await postJson("/cash-movements", {
         session_id: null,
         financial_account_id: Number(movForm.financial_account_id),
@@ -106,6 +97,16 @@ export default function PagosPage() {
         amount: Number(movForm.amount),
         notes: movForm.notes || undefined,
       });
+
+      // If advance to supplier, also create advance record
+      if (movForm.reason === "advance" && movForm.supplier_id) {
+        await postJson("/advances", {
+          entity_type: "provider",
+          entity_id: Number(movForm.supplier_id),
+          amount: Number(movForm.amount),
+          notes: movForm.notes || undefined,
+        });
+      }
       setShowMovForm(false);
       setMovForm({ financial_account_id: "", reason: "", purchase_order_id: "", supplier_id: "", amount: "", notes: "" });
       setSelectedNp(null);
@@ -191,6 +192,7 @@ export default function PagosPage() {
                     <div style={{ minWidth: 0 }}>
                       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
                         <span style={{ fontWeight: 800, fontSize: "15px", color: "#e74c3c" }}>-${Number(m.amount).toLocaleString("es-AR")}</span>
+                        <span style={{ fontSize: "11px", background: "#f0f0f0", padding: "2px 6px", borderRadius: "4px", color: "#666" }}>#{m.id}</span>
                         <span style={{ fontSize: "12px", color: "#666", fontWeight: 700 }}>{title}</span>
                         {m.payment_status_name && (
                           <span style={{ fontSize: "11px", background: m.payment_status_color || "#f4f4f4", color: "#fff", padding: "2px 8px", borderRadius: "999px", fontWeight: 700 }}>
