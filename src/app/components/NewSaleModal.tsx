@@ -27,7 +27,6 @@ export default function NewSaleModal({ saleChannels, orderStatuses, paymentStatu
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [saving, setSaving] = useState(false);
   const [hasOpenCashSession, setHasOpenCashSession] = useState(false);
-  const [cashSessionId, setCashSessionId] = useState<string | null>(null);
 
   // Client search
   const [contactSearch, setContactSearch] = useState("");
@@ -67,7 +66,6 @@ export default function NewSaleModal({ saleChannels, orderStatuses, paymentStatu
       setUsers(u.filter((user: any) => user.is_active !== false));
       setPaymentMethods(pm);
       setHasOpenCashSession(Boolean(sess));
-      if (sess?.id) setCashSessionId(String(sess.id));
     }).catch(console.error);
   }, []);
 
@@ -77,7 +75,7 @@ export default function NewSaleModal({ saleChannels, orderStatuses, paymentStatu
   const [montoPagado, setMontoPagado] = useState("");
   const [clienteAdvances, setClienteAdvances] = useState<{ id: number; amount: number; remaining: number; notes: string; created_at: string }[]>([]);
   const [advanceModalOpen, setAdvanceModalOpen] = useState(false);
-  const [advanceSeleccionado, setAdvanceSeleccionado] = useState<{ id: number; remaining: number; financial_account_id?: number } | null>(null);
+  const [advanceSeleccionado, setAdvanceSeleccionado] = useState<{ id: number; remaining: number } | null>(null);
   const [advanceMontoUsar, setAdvanceMontoUsar] = useState("");
 
   // Load advances when contact selected
@@ -128,16 +126,6 @@ export default function NewSaleModal({ saleChannels, orderStatuses, paymentStatu
     }
   }, [total, pagaEnElActo, advanceSeleccionado]);
 
-  // Cuando se elige un anticipo, reducir monto a cobrar y pre-llenar cuenta
-  useEffect(() => {
-    if (!advanceSeleccionado) return;
-    if (advanceSeleccionado.financial_account_id) {
-      setPagoAccountId(String(advanceSeleccionado.financial_account_id));
-    }
-    const used = Math.min(Number(advanceMontoUsar) || 0, Number(total));
-    setMontoPagado(String(Math.max(0, Number(total) - used)));
-  }, [advanceSeleccionado?.id, advanceMontoUsar, total]);
-
   function addProduct(p: Product) {
     if (items.find(i => i.product_id === p.id)) return;
     setItems([...items, { product_id: p.id, product_name: p.name, quantity: 1, unit_price: Number(p.price) || 0 }]);
@@ -182,39 +170,33 @@ export default function NewSaleModal({ saleChannels, orderStatuses, paymentStatu
         } : undefined,
       });
 
-      // Si "Paga en el acto" est? activado, aplicar anticipo y cobrar saldo restante
-      if (pagaEnElActo) {
+      // Si "Paga en el acto" está activado, registrar el cobro
+      if (pagaEnElActo && montoPagado && Number(montoPagado) > 0) {
         try {
-          const montoAnticipo = Math.min(Number(advanceMontoUsar) || 0, Number(total));
-          const montoSaldo = Math.max(0, Number(total) - montoAnticipo);
-
-          if (advanceSeleccionado && montoAnticipo > 0) {
+          // Si se usó anticipo, registrar el uso (NO crea cash-movement, ya entró cuando se generó el anticipo)
+          if (advanceSeleccionado && advanceMontoUsar && Number(advanceMontoUsar) > 0) {
             await postJson(`/advances/${advanceSeleccionado.id}/use`, {
-              amount: montoAnticipo,
+              amount: Number(advanceMontoUsar),
               order_id: orderResult.id,
-              session_id: cashSessionId ? Number(cashSessionId) : null,
-              notes: `Usa anticipo #${advanceSeleccionado.id}`,
             });
           }
 
-          if (montoSaldo > 0 && Number(montoPagado) > 0) {
-            if (!pagoAccountId) {
-              throw new Error('{"error":"Faltan campos requeridos"}');
-            }
+          // Solo crear cash-movement para el monto PAGADO EN EFECTIVO (montoPagado es efectivo, advance es adicional)
+          const efectivoMonto = Number(montoPagado);
+          if (efectivoMonto > 0) {
             await postJson("/cash-movements", {
               financial_account_id: Number(pagoAccountId),
               type: "in",
               reason: "nv_payment",
               order_id: orderResult.id,
-              contact_id: selectedContact.id,
-              amount: Number(montoPagado),
-              notes: advanceSeleccionado ? `Saldo restante luego de anticipo #${advanceSeleccionado.id}` : "Cobro en el acto",
-              session_id: cashSessionId ? Number(cashSessionId) : null,
+              client_id: selectedContact.id,
+              amount: efectivoMonto,
+              notes: "Cobro en el acto",
             });
           }
         } catch (e: any) {
           console.error("Error registrando cobro:", e);
-          alert("La venta se cre?, pero la imputaci?n del cobro fall?. Revis? la NV y la caja.");
+          alert("La venta se creó, pero el cobro en el acto falló. La NV quedó impaga. Abrí una caja y registrá el cobro manualmente.");
         }
       }
 
@@ -524,7 +506,7 @@ export default function NewSaleModal({ saleChannels, orderStatuses, paymentStatu
                     const effRemaining = isSelected ? adv.remaining - Number(advanceMontoUsar) : adv.remaining;
                     if (effRemaining <= 0) return null;
                     return (
-                    <div key={adv.id} onClick={() => { setAdvanceSeleccionado({ id: adv.id, remaining: adv.remaining, financial_account_id: adv.financial_account_id }); setAdvanceMontoUsar(String(Math.min(Number(total), adv.remaining))); setAdvanceModalOpen(false); }}
+                    <div key={adv.id} onClick={() => { setAdvanceSeleccionado({ id: adv.id, remaining: adv.remaining }); setAdvanceMontoUsar(String(Math.min(Number(montoPagado), adv.remaining))); setAdvanceModalOpen(false); }}
                       style={{ padding: "12px 16px", borderRadius: "10px", border: "2px solid #e0e0e0", cursor: "pointer" }}
                       onMouseEnter={e => (e.currentTarget.style.borderColor = "#6c63ff")}
                       onMouseLeave={e => (e.currentTarget.style.borderColor = "#e0e0e0")}>
