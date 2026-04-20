@@ -32,6 +32,7 @@ export default function ProductosPage() {
   const [period, setPeriod] = useState<"today"|"week"|"month">("today");
   const [editing, setEditing] = useState<Product | null>(null);
   const [components, setComponents] = useState<ProductComponent[]>([]);
+  const [pendingComponents, setPendingComponents] = useState<{input_item_id: number, quantity: number, input_item_name: string}[]>([]);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
   const [showAll, setShowAll] = useState(false);
@@ -91,6 +92,7 @@ export default function ProductosPage() {
     setEditing(null);
     setForm({ name: "", sku: "", sku_externo: "", description: "", commercial_description: "", price: "", unit: "unidad", category_id: "", brand_id: "", stock_quantity: "", min_stock: "", requires_stock: false, is_premium: false, premium_level: 5, cost_price: "", uses_inputs: false, image_url: "", _pendingImage: "", _orig_image_url: "", _orig_commercial_description: "" });
     setComponents([]);
+    setPendingComponents([]);
     setSelectedInput("");
     setInputDisplay("");
     setInputQty("1");
@@ -120,22 +122,37 @@ export default function ProductosPage() {
   }
 
   async function addComponent() {
-    if (!selectedInput || !editing) return;
-    try {
-      await postJson(`/products/${editing.id}/components`, { input_item_id: Number(selectedInput), quantity: Number(inputQty) });
+    if (!selectedInput) return;
+    const inputName = allInputs.find(i => String(i.id) === selectedInput)?.name || '';
+    if (editing) {
+      try {
+        await postJson(`/products/${editing.id}/components`, { input_item_id: Number(selectedInput), quantity: Number(inputQty) });
+        setSelectedInput("");
+        setInputDisplay("");
+        setInputQty("1");
+        loadComponents(editing.id);
+      } catch (e) { console.error(e); }
+    } else {
+      // New product - add to pending list
+      setPendingComponents(prev => [...prev, { input_item_id: Number(selectedInput), quantity: Number(inputQty), input_item_name: inputName }]);
       setSelectedInput("");
       setInputDisplay("");
       setInputQty("1");
-      loadComponents(editing.id);
-    } catch (e) { console.error(e); }
+    }
   }
 
   async function removeComponent(compId: number) {
-    if (!editing) return;
-    try {
-      await deleteJson(`/products/${editing.id}/components/${compId}`);
-      loadComponents(editing.id);
-    } catch (e) { console.error(e); }
+    console.log("DEBUG removeComponent:", { compId, editingId: editing?.id });
+    if (editing) {
+      try {
+        const url = `/products/${editing.id}/components/${compId}`;
+        console.log("DEBUG DELETE url:", url);
+        await deleteJson(url);
+        loadComponents(editing.id);
+      } catch (e) { console.error(e); }
+    } else {
+      setPendingComponents(prev => prev.filter(c => c.input_item_id !== compId));
+    }
   }
 
   async function handleSave() {
@@ -164,6 +181,15 @@ export default function ProductosPage() {
       } else {
         const created = await postJson<{id:number}>(`/products`, payload);
         savedId = created.id;
+        // Create pending components for new products
+        if (pendingComponents.length > 0 && savedId) {
+          for (const comp of pendingComponents) {
+            try {
+              await postJson(`/products/${savedId}/components`, { input_item_id: comp.input_item_id, quantity: comp.quantity });
+            } catch (e) { console.error(e); }
+          }
+          setPendingComponents([]);
+        }
       }
       // Upload image if pending file (backend saves image to disk and updates DB with URL)
       if ((form as any)._pendingImage && savedId) {
@@ -515,7 +541,7 @@ export default function ProductosPage() {
               </label>
               {form.uses_inputs && (
                 <div style={{ marginTop: "10px" }}>
-                  {components.length > 0 && (
+                  {(components.length > 0 || pendingComponents.length > 0) && (
                     <div style={{ marginBottom: "8px" }}>
                       {components.map(c => (
                         <div key={c.id} style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px", fontSize: "12px" }}>
@@ -524,6 +550,17 @@ export default function ProductosPage() {
                           <button onClick={() => removeComponent(c.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#e74c3c", fontSize: "13px" }}>x</button>
                         </div>
                       ))}
+                      {pendingComponents.map((c, idx) => {
+                        const inputInfo = allInputs.find(i => i.id === c.input_item_id);
+                        const unitCost = inputInfo ? Number(inputInfo.default_cost) : 0;
+                        return (
+                        <div key={"pending-" + idx} style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px", fontSize: "12px", opacity: 0.7 }}>
+                          <span style={{ flex: 1 }}>{c.quantity} x {c.input_item_name} ({inputInfo?.unit || ''})</span>
+                          <span style={{ color: "#888" }}>${(c.quantity * unitCost).toLocaleString("es-AR")}</span>
+                          <button onClick={() => removeComponent(c.input_item_id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#e74c3c", fontSize: "13px" }}>x</button>
+                        </div>
+                        );
+                      })}
                       <div style={{ fontSize: "12px", fontWeight: 700, color: "#6c63ff", marginTop: "4px", borderTop: "1px solid #ddd", paddingTop: "4px" }}>
                         Costo total: ${computedCost.toLocaleString("es-AR")}
                       </div>
